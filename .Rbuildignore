@@ -1,0 +1,4 @@
+^renv$
+^renv\.lock$
+^stanworkflow\.Rproj$
+^\.Rproj\.user$
