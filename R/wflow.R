@@ -529,7 +529,7 @@ write.wflow <- function(x,
       ))
     },
     error = function(e) {
-      stop(sprintf(
+      warning(sprintf(
         "Failed to save wflow: %s\nTrying fallback with base::saveRDS()",
         e$message
       ))
