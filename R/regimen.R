@@ -96,11 +96,13 @@ regimen <- function(model_name,
 
   stopifnot(is.character(model_name), length(model_name) == 1L)
   stopifnot(is.list(data_list), "data" %in% names(data_list))
-  if (!is.null(contrasts)) stopifnot(is.list(contrasts), length(contrasts) >= 1L)
-  if (!all(vapply(contrasts, inherits, logical(1L), "contrast")))
-    stop("All elements of `contrasts` must be `contrast` objects.")
-  if (is.null(names(contrasts)) || any(names(contrasts) == ""))
-    stop("`contrasts` must be a fully named list.")
+  if (!is.null(contrasts)) {
+    stopifnot(is.list(contrasts), length(contrasts) >= 1L)
+    if (!all(vapply(contrasts, inherits, logical(1L), "contrast")))
+      stop("All elements of `contrasts` must be `contrast` objects.")
+    if (is.null(names(contrasts)) || any(names(contrasts) == ""))
+      stop("`contrasts` must be a fully named list.")
+  }
 
   draws_method <- match.arg(draws_method, c("counterfactual", "descriptive"))
 

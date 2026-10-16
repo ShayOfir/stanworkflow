@@ -1512,18 +1512,12 @@ ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NU
      # check that all indices for this factor are within the levels provided
      max_idx <- max(purrr::map_int(result$indices, \(idx) idx[[i]]))
       if (max_idx > length(lvls)) {
-        browser()
         stop(sprintf(
-          "Factor '%s' (position %d) has %d levels but Stan index %d was found. ",
-          "Ensure `factors` are ordered to match Stan's index dimensions.",
+          "Factor '%s' (position %d) has %d levels but Stan index %d was found. Ensure `factors` are ordered to match Stan's index dimensions.",
           nm, i, length(lvls), max_idx
         ))
       }
-      tryCatch(
       result <- dplyr::mutate(result, !!nm := purrr::map_chr(indices, \(idx) lvls[[idx[[i]]]]))
-      , error = function(e) {
-          browser()
-        })
    }
 
   
