@@ -1,0 +1,631 @@
+<title>stanworkflow Review</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg: #f3f6f4;
+    --surface: #ffffff;
+    --surface-2: #eaf0ec;
+    --ink: #15211b;
+    --ink-soft: #46564d;
+    --ink-faint: #6f8177;
+    --line: #d7e0da;
+    --line-strong: #b7c4bc;
+    --accent: #1f6f63;
+    --accent-ink: #0f4b41;
+    --accent-soft: #dcece7;
+    --good: #3c7a4d;
+    --good-bg: #e6f1e7;
+    --warn: #a2731c;
+    --warn-bg: #f6ecd8;
+    --bad: #a1443a;
+    --bad-bg: #f5e5e2;
+    --shadow: 0 1px 2px rgba(21,33,27,0.06), 0 8px 24px -16px rgba(21,33,27,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #101713;
+      --surface: #161f1a;
+      --surface-2: #1c2620;
+      --ink: #e7efe9;
+      --ink-soft: #b3c2b9;
+      --ink-faint: #82938a;
+      --line: #2a352e;
+      --line-strong: #3a473e;
+      --accent: #5fb3a1;
+      --accent-ink: #8fd0c1;
+      --accent-soft: #1e2f2a;
+      --good: #6cb37e;
+      --good-bg: #1c2a1f;
+      --warn: #d3a44f;
+      --warn-bg: #2e2716;
+      --bad: #d1897e;
+      --bad-bg: #2e1c19;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -16px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #101713;
+    --surface: #161f1a;
+    --surface-2: #1c2620;
+    --ink: #e7efe9;
+    --ink-soft: #b3c2b9;
+    --ink-faint: #82938a;
+    --line: #2a352e;
+    --line-strong: #3a473e;
+    --accent: #5fb3a1;
+    --accent-ink: #8fd0c1;
+    --accent-soft: #1e2f2a;
+    --good: #6cb37e;
+    --good-bg: #1c2a1f;
+    --warn: #d3a44f;
+    --warn-bg: #2e2716;
+    --bad: #d1897e;
+    --bad-bg: #2e1c19;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -16px rgba(0,0,0,0.5);
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.6;
+  }
+  .page{
+    max-width: 864px;
+    margin: 0 auto;
+    padding: 56px 24px 120px;
+  }
+  ::selection{ background: var(--accent-soft); color: var(--accent-ink); }
+
+  a{ color: var(--accent-ink); text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+  a:hover{ text-decoration-color: var(--accent); }
+  a:focus-visible, button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  code, .mono{
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 0.86em;
+  }
+  code{
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    color: var(--ink);
+  }
+
+  h1, h2, h3{
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  /* ---- Masthead ---- */
+  .masthead{
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--line-strong);
+    padding: 20px 0 26px;
+    margin-bottom: 40px;
+  }
+  .eyebrow{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .eyebrow::after{
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+  .masthead h1{
+    font-size: clamp(30px, 4.4vw, 42px);
+    line-height: 1.08;
+    margin: 0 0 10px;
+  }
+  .masthead .dek{
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 56ch;
+    margin: 0 0 20px;
+  }
+  .meta-row{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  .meta-row dt{ display: inline; font-weight: 500; color: var(--ink-soft); }
+  .meta-row dd{ display: inline; margin: 0 0 0 6px; }
+  .meta-item{ white-space: nowrap; }
+
+  /* ---- Scorecard ---- */
+  .scorecard{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 48px;
+    box-shadow: var(--shadow);
+  }
+  .score-tile{
+    background: var(--surface);
+    padding: 18px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .score-tile .num{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+  .score-tile .label{
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .score-tile .verdict{
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  .pill{
+    align-self: flex-start;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+  .pill.good{ background: var(--good-bg); color: var(--good); }
+  .pill.warn{ background: var(--warn-bg); color: var(--warn); }
+  .pill.bad{ background: var(--bad-bg); color: var(--bad); }
+
+  /* ---- Sections ---- */
+  section{ margin-bottom: 56px; }
+  .section-head{
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 6px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-head .idx{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    border-radius: 5px;
+    padding: 2px 7px;
+  }
+  .section-head h2{ font-size: 24px; margin: 0; }
+  .section-intro{
+    color: var(--ink-soft);
+    max-width: 66ch;
+    margin: 14px 0 24px;
+  }
+  h3{
+    font-size: 16.5px;
+    margin: 30px 0 10px;
+    color: var(--ink);
+  }
+  p{ max-width: 68ch; margin: 0 0 14px; }
+  ul, ol{ max-width: 66ch; padding-left: 22px; margin: 0 0 14px; }
+  li{ margin-bottom: 7px; }
+  li::marker{ color: var(--ink-faint); }
+
+  /* ---- Callouts ---- */
+  .note{
+    border-left: 3px solid var(--line-strong);
+    background: var(--surface);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 16px 0;
+    max-width: 66ch;
+  }
+  .note p, .note ul{ margin-bottom: 0; }
+  .note ul{ margin-top: 8px; }
+  .note-label{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .note.works{ border-left-color: var(--good); }
+  .note.works .note-label{ color: var(--good); }
+  .note.gap{ border-left-color: var(--bad); }
+  .note.gap .note-label{ color: var(--bad); }
+  .note.watch{ border-left-color: var(--warn); }
+  .note.watch .note-label{ color: var(--warn); }
+
+  /* ---- Tables ---- */
+  .table-wrap{
+    overflow-x: auto;
+    margin: 18px 0 26px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  table{
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    background: var(--surface);
+    font-size: 13.5px;
+  }
+  th, td{
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-2);
+    font-weight: 500;
+  }
+  tbody tr:last-child td{ border-bottom: none; }
+  tbody tr:hover{ background: var(--surface-2); }
+  td.status-bad{ color: var(--bad); font-weight: 500; }
+  td.status-warn{ color: var(--warn); font-weight: 500; }
+  td.status-good{ color: var(--good); font-weight: 500; }
+
+  /* ---- Journal rank list ---- */
+  .rank-list{ display: flex; flex-direction: column; gap: 14px; margin: 20px 0 26px; }
+  .rank-item{
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .rank-item .rank-num{
+    font-family: "Newsreader", serif;
+    font-weight: 600;
+    font-size: 26px;
+    color: var(--ink-faint);
+  }
+  .rank-item.primary .rank-num{ color: var(--accent-ink); }
+  .rank-item h4{
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .rank-item .tag{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    padding: 2px 7px;
+    border-radius: 100px;
+    margin-left: 8px;
+    position: relative;
+    top: -2px;
+  }
+  .rank-item p{ margin: 0; font-size: 13.5px; color: var(--ink-soft); max-width: none; }
+
+  /* ---- Closing ---- */
+  .closing{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 26px 26px 24px;
+    box-shadow: var(--shadow);
+  }
+  .closing h2{ font-size: 20px; margin: 0 0 12px; }
+  .closing p:last-child{ margin-bottom: 0; }
+
+  .foot{
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 720px){
+    .scorecard{ grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 460px){
+    .scorecard{ grid-template-columns: 1fr; }
+    .rank-item{ grid-template-columns: 28px 1fr; padding: 14px; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">Code &amp; methodology review</div>
+    <h1>stanworkflow</h1>
+    <p class="dek">An assessment of the package's usability, engineering hygiene, fidelity to Gelman et al.'s (2020) Bayesian Workflow, and readiness for methodological-journal submission.</p>
+    <dl class="meta-row">
+      <div class="meta-item"><dt>Scope</dt><dd><code>R/</code> — 6 files, ~5,400 lines</dd></div>
+      <div class="meta-item"><dt>Reviewed</dt><dd>2026-09-07</dd></div>
+      <div class="meta-item"><dt>Package version</dt><dd>0.0.0.9000</dd></div>
+    </dl>
+  </header>
+
+  <div class="scorecard">
+    <div class="score-tile">
+      <span class="num">01</span>
+      <span class="label">Usability</span>
+      <span class="pill warn">Uneven</span>
+      <p class="verdict">A genuinely pipe-friendly, pedagogically rich workflow undercut by two overlapping APIs and zero onboarding docs.</p>
+    </div>
+    <div class="score-tile">
+      <span class="num">02</span>
+      <span class="label">Engineering</span>
+      <span class="pill warn">Pre-alpha packaging</span>
+      <p class="verdict">Professional S3 architecture; DESCRIPTION, dependencies, and tests are still template-stage.</p>
+    </div>
+    <div class="score-tile">
+      <span class="num">03</span>
+      <span class="label">Gelman et al. fit</span>
+      <span class="pill good">Strong on checking</span>
+      <p class="verdict">Faithfully automates the checking &amp; comparison loop; the multi-model, simulation-based-calibration loop is absent.</p>
+    </div>
+    <div class="score-tile">
+      <span class="num">04</span>
+      <span class="label">Publication readiness</span>
+      <span class="pill bad">Not yet</span>
+      <p class="verdict">Clear, bounded punch list stands between this and a JSS submission.</p>
+    </div>
+  </div>
+
+  <section id="usability">
+    <div class="section-head">
+      <span class="idx">01</span>
+      <h2>Coherence &amp; usability, from the user's chair</h2>
+    </div>
+    <p class="section-intro">The package's central bet is that a researcher can hand it a data frame and a Stan file and get the whole checking loop back for free. That bet mostly pays off once you're inside the pipeline — the trouble is getting in.</p>
+
+    <h3>What works</h3>
+    <div class="note works">
+      <span class="note-label">Strength</span>
+      <p>The <code>wflow</code>/<code>regimen</code> verbs — <code>prepare()</code>, <code>tune()</code>, <code>fit()</code>, <code>diagnose()</code>, <code>infer()</code>, <code>run()</code>, <code>resume()</code> — read like a sentence and chain with <code>|&gt;</code> the way a tidyverse user already expects. <code>resume()</code> in particular is a mature touch: it inspects which of <code>$paths$prior</code> / <code>$posterior</code> / <code>$inference</code> exist on disk and re-runs only what's missing, which matters for anything that runs long enough to get killed by a cluster scheduler.</p>
+    </div>
+    <div class="note works">
+      <span class="note-label">Strength</span>
+      <p>Diagnostics don't just report numbers, they interpret them. <code>diagnose()</code> flags R-hat &gt; 1.01 and ESS &lt; 400 by name; <code>ppc()</code> turns each Bayesian p-value into a plain-English misfit judgement (<em>"model under-dispersed relative to data"</em>); <code>loo_cv()</code> turns Pareto-k counts into a McElreath-cited action list. For a target user who knows the statistics but not always the idiom, this is the package's best idea — it teaches while it runs.</p>
+    </div>
+    <div class="note works">
+      <span class="note-label">Strength</span>
+      <p><code>quick_fit()</code> (skip all checks, fit only) reveals a real use case behind the design: mass-univariate work, e.g. looping the same model over many ROIs. That's exactly the kind of detail that only comes from having actually run this on the <code>dev/TMS_e1p</code> data.</p>
+    </div>
+
+    <h3>What costs the user</h3>
+    <div class="note gap">
+      <span class="note-label">Gap</span>
+      <p><strong>No entry point.</strong> <code>README.md</code> is one line — the package name. There is no vignette. The single most powerful mechanism in the package, the naming-convention auto-fill in <code>get_stan_data()</code> (a Stan variable literally named <code>n_group</code> or <code>group_id</code> or <code>prior_sigma</code> gets populated automatically from a same-named data-frame column), is documented only in code comments and regex. A new user has no way to learn this contract except by reading <code>stanmodels.R</code> line by line.</p>
+    </div>
+    <div class="note gap">
+      <span class="note-label">Gap</span>
+      <p><strong>Two objects doing one job.</strong> <code>wflow</code> and <code>regimen</code> both expose <code>tune()</code>, <code>fit()</code>/<code>fit_posterior()</code>, <code>run()</code> — and <code>regimen</code> wraps a <code>wflow</code> internally, so a user has to learn both surfaces to understand either. My best read is <code>wflow</code> = one interactive model session, <code>regimen</code> = the same thing with disk checkpointing for batch/mass-univariate work — but that distinction isn't stated anywhere for the user to find.</p>
+    </div>
+    <div class="note gap">
+      <span class="note-label">Gap</span>
+      <p><strong><code>infer_contrasts()</code>'s option surface is large and unshown.</strong> Continuous vs. categorical, descriptive vs. counterfactual, one-way vs. two-way, plain vs. hurdle outcome — every combination is individually documented (see <code>infer.Rd</code>), but no single example walks a user through choosing between them. This is exactly the kind of decision tree a vignette earns its keep on.</p>
+    </div>
+    <div class="note watch">
+      <span class="note-label">Worth a look</span>
+      <p>Progress narration (e.g. <code>cat(sprintf("Simulating at %s = %s...", ...))</code> inside <code>.get_yrep_draws()</code>) goes through <code>cat()</code>, not <code>message()</code>. In an interactive session that's fine; in a scripted <code>regimen</code> run it can't be silenced with <code>suppressMessages()</code>.</p>
+    </div>
+  </section>
+
+  <section id="engineering">
+    <div class="section-head">
+      <span class="idx">02</span>
+      <h2>Software engineering practice</h2>
+    </div>
+    <p class="section-intro">The architecture is the strongest part of the codebase: a consistent S3 class per concern (<code>stanmodel</code>, <code>priors</code>, <code>sampler_params</code>, <code>wflow</code>, <code>regimen</code>, <code>contrast</code>, <code>outcome_spec</code>, <code>inference</code>, <code>ppc_results</code>, <code>loo_results</code>), generic dispatch throughout, and roxygen coverage on essentially every export. The packaging around that architecture, however, is still at <code>usethis::create_package()</code> defaults in several places that block a real release.</p>
+
+    <h3>Blocking, before any release</h3>
+    <div class="note gap">
+      <span class="note-label">Blocks R CMD check</span>
+      <p><code>DESCRIPTION</code> is unfinished template text — <code>Title: What the Package Does (One Line, Title Case)</code>, <code>Authors@R: person("First", "Last", ...)</code>, and a <code>License:</code> field that is literally the placeholder <code>`use_mit_license()`, `use_gpl3_license()` or friends to pick a license</code>. There is no <code>LICENSE</code> file. None of this is a style nit — an invalid <code>License:</code> field fails <code>R CMD check</code> outright.</p>
+    </div>
+
+    <h3>Dependency audit</h3>
+    <p>Cross-referencing every <code>pkg::fn()</code> call in <code>R/</code> against <code>DESCRIPTION</code>'s <code>Imports:</code> turns up five problems, from "undeclared" to "not installable from CRAN at all":</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Package</th><th>Used for</th><th>In <code>Imports:</code>?</th><th>Issue</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>rethinking</code></td>
+            <td><code>HPDI()</code> in <code>infer.R</code></td>
+            <td>Yes</td>
+            <td class="status-bad">Not on CRAN (GitHub-only, McElreath's course package) — disqualifies CRAN submission as-is</td>
+          </tr>
+          <tr>
+            <td><code>loo</code></td>
+            <td><code>loo()</code>, <code>relative_eff()</code> — the whole of <code>loocv.R</code></td>
+            <td class="status-bad">No</td>
+            <td>Hard runtime dependency, entirely undeclared</td>
+          </tr>
+          <tr>
+            <td><code>JWileymisc</code></td>
+            <td><code>saveRDSfst()</code> / <code>readRDSfst()</code> in <code>wflow.R</code></td>
+            <td class="status-bad">No</td>
+            <td>Undeclared; CRAN availability unverified — confirm before relying on it for the I/O layer</td>
+          </tr>
+          <tr>
+            <td><code>tibble</code></td>
+            <td><code>deframe()</code> in <code>wflow.R</code></td>
+            <td class="status-bad">No</td>
+            <td>Undeclared direct call</td>
+          </tr>
+          <tr>
+            <td><code>scales</code></td>
+            <td><code>percent()</code> in <code>infer.R</code> plot labels</td>
+            <td class="status-bad">No</td>
+            <td>Undeclared direct call</td>
+          </tr>
+          <tr>
+            <td><code>patchwork</code></td>
+            <td><code>wrap_plots()</code> in <code>display.ppc_results_grouped()</code></td>
+            <td class="status-warn">Inconsistent</td>
+            <td>Imported in <code>NAMESPACE</code> but absent from <code>DESCRIPTION</code> — the two files disagree</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The <code>rethinking</code> dependency is the one that matters most: it exists only to compute a highest-posterior-density interval, which is a five-line function or a call to <code>coda::HPDinterval()</code> (CRAN-available). Removing it removes the GitHub-only dependency in one move.</p>
+
+    <h3>Other engineering findings</h3>
+    <div class="note gap">
+      <span class="note-label">Gap</span>
+      <p><strong>Real test coverage is confined to one file.</strong> <code>tests/testthat/test-stanmodels.R</code> exercises <code>stanmodel()</code>, <code>priors()</code>, <code>sampler_params()</code>, <code>.parse_stan_data_block()</code>, and <code>fit()</code>'s guard clauses — and the file itself carries a full duplicate copy of every test, once commented out, once active, left over from a refactor. <code>infer.R</code> (the largest and most computationally consequential file), <code>wflow.R</code>, <code>regimen.R</code>, and <code>loocv.R</code> have <strong>no tests at all</strong>. For a package whose entire value proposition is correct statistical automation, this is the gap a methodological-journal reviewer will hit first.</p>
+    </div>
+    <div class="note gap">
+      <span class="note-label">Gap</span>
+      <p><strong>Dead code from unmerged edits.</strong> <code>.interpret_bayes_pvalue()</code> and <code>.interpret_coverage()</code> are each defined twice, verbatim, in <code>stanmodels.R</code>. <code>.plot_two_way_scenarios()</code> is defined twice in <code>infer.R</code>. Harmless at runtime (the later definition wins silently) but it's exactly what a lint pass or a second reviewer should have caught before merge.</p>
+    </div>
+    <div class="note watch">
+      <span class="note-label">Worth a look</span>
+      <p><code>write.wflow()</code>'s <code>tryCatch</code> fallback is unreachable: the <code>error =</code> handler calls <code>stop()</code> before the intended <code>saveRDS()</code> fallback line, so that fallback never runs. Small, but worth a two-line fix.</p>
+    </div>
+    <div class="note watch">
+      <span class="note-label">Worth a look</span>
+      <p><code>old/</code> (legacy scratch scripts) is not listed in <code>.Rbuildignore</code>, while <code>dev/</code> correctly is — a stray top-level directory that <code>R CMD check</code> will flag as a NOTE. No CI configuration is present, and most existing tests are gated behind <code>skip_if_not(cmdstanr::cmdstan_version() > "0", ...)</code>, so coverage silently drops further on any machine without a full CmdStan toolchain — exactly the situation a CI runner would be in without extra setup.</p>
+    </div>
+
+    <h3>Net read</h3>
+    <p>The architecture would pass a code review at a software shop; the packaging would not pass <code>R CMD check --as-cran</code> today. Both halves are visible in the same files — this isn't a rewrite, it's a punch list.</p>
+  </section>
+
+  <section id="workflow-fit">
+    <div class="section-head">
+      <span class="idx">03</span>
+      <h2>Fit against Gelman et al. (2020), <em>Bayesian Workflow</em></h2>
+    </div>
+    <p class="section-intro">Gelman et al. describe workflow as an iterative loop across a <em>growing family</em> of candidate models — build, simulate fake data, check computation, fit, diagnose, compare, expand or simplify, repeat. <code>stanworkflow</code> automates the checking-and-comparison machinery of that loop with real fidelity, but the loop itself, iteration across model space, stays outside the package's scope.</p>
+
+    <h3>Where it matches</h3>
+    <div class="note works">
+      <span class="note-label">Faithful</span>
+      <p><strong>Prior predictive checking (§2).</strong> <code>run_predictive_checks(prior_predictive = TRUE)</code> fits with <code>skip_likelihood = 1</code> and routes straight into <code>ppc()</code> — a direct implementation, not a paraphrase.</p>
+    </div>
+    <div class="note works">
+      <span class="note-label">Faithful</span>
+      <p><strong>Computational diagnostics (§3–4).</strong> <code>diagnose()</code> covers the recommended set — R-hat, ESS, divergences, max-treedepth, E-BFMI — plus McElreath's trankplots, with in-code citations to specific sections of both sources.</p>
+    </div>
+    <div class="note works">
+      <span class="note-label">Faithful</span>
+      <p><strong>Posterior predictive checking (§5, Gabry et al. 2019).</strong> <code>ppc()</code>'s density overlay, marginal-statistic Bayesian p-values, joint mean–sd plot, and interval-coverage calibration reproduce Gabry et al.'s recommended suite point for point.</p>
+    </div>
+    <div class="note works">
+      <span class="note-label">Faithful</span>
+      <p><strong>Model comparison (§7).</strong> <code>loo_cv()</code> wraps PSIS-LOO with Pareto-k diagnostics and interpretive guidance tied explicitly to Gelman §7 and McElreath §7.5 — including the (correct, and easy to get wrong) instruction to treat high-k points as substantively interesting rather than as outliers to discard.</p>
+    </div>
+
+    <h3>Where it stops short</h3>
+    <div class="note gap">
+      <span class="note-label">Not covered</span>
+      <p><strong>The workflow is single-model.</strong> Gelman et al.'s central move is comparing across a <em>series</em> of models — nothing in <code>wflow</code> or <code>regimen</code> represents a model family as a first-class object, or supports comparing two fits beyond a user manually calling <code>loo::loo_compare()</code> themselves.</p>
+    </div>
+    <div class="note gap">
+      <span class="note-label">Not covered</span>
+      <p><strong>No simulation-based calibration.</strong> The package supports prior-predictive draws but not the full SBC loop (simulate from the prior with known parameters, refit, check rank statistics) that Gelman et al. and Talts et al. (2018) treat as the stronger computational-validity check — <code>ppc()</code>'s density overlay is a weaker substitute for this.</p>
+    </div>
+    <div class="note gap">
+      <span class="note-label">Not covered</span>
+      <p><strong>No model-expansion/simplification scaffolding.</strong> §3's "start simple and expand, or start complex and simplify" pattern has no representation — the package diffs contrasts within one fit, never Stan code or priors across fits.</p>
+    </div>
+    <div class="note gap">
+      <span class="note-label">Underdeveloped</span>
+      <p><strong>Reporting (§8) is print methods, not a report.</strong> <code>inference</code>'s print/plot dispatch is a genuine attempt at "presenting results," but there's no vignette or template turning a completed <code>regimen</code> into a reproducible write-up — the Quarto reports under <code>dev/TMS_e1p</code> look like the right instinct, not yet generalized into the package.</p>
+    </div>
+
+    <h3>Net read</h3>
+    <p>This is a faithful, well-cited automation of the <em>checking and evaluation</em> stages of Bayesian workflow, applied to one model at a time. The exploratory, multi-model, simulation-calibrated core of what makes Gelman et al. call it a "workflow" rather than "a well-checked fit" is the part still to build.</p>
+  </section>
+
+  <section id="publication">
+    <div class="section-head">
+      <span class="idx">04</span>
+      <h2>Path to a methodological-journal submission</h2>
+    </div>
+    <p class="section-intro">None of the gaps above are conceptual — they're bounded, known work. In rough order:</p>
+    <ol>
+      <li><strong>Packaging hygiene.</strong> Real <code>Title</code>, <code>Description</code>, <code>Authors@R</code> (with ORCID), a valid <code>License:</code> + <code>LICENSE</code> file, <code>URL</code>/<code>BugReports</code>. Fix <code>Imports:</code> against the dependency audit above; replace <code>rethinking::HPDI()</code> with a CRAN-safe equivalent. Deduplicate the repeated function definitions; add <code>old/</code> to <code>.Rbuildignore</code>. Ship a clean <code>R CMD check --as-cran</code>.</li>
+      <li><strong>Test coverage.</strong> Real tests for <code>infer.R</code>, <code>wflow.R</code>, <code>regimen.R</code>, <code>loocv.R</code> — at minimum, numerical-correctness tests for <code>infer_contrasts()</code> against a hand-computed or simulated ground truth, plus small fast-compiling toy Stan models exercising <code>wflow</code>/<code>regimen</code> end to end. Add GitHub Actions CI.</li>
+      <li><strong>Documentation.</strong> A getting-started vignette running the full loop on a toy dataset, and a second vignette specifying the <code>get_stan_data()</code> naming convention as an explicit contract, not an implicit regex. A pkgdown site is expected by every venue below.</li>
+      <li><strong>Statistical validation.</strong> Cross-check <code>infer_contrasts()</code> and <code>loo_cv()</code> against known results — <code>brms</code>/<code>rstanarm</code>'s equivalents, or a reproduction of a published analysis — as evidence for referees.</li>
+      <li><strong>A stated scope.</strong> The manuscript needs a direct answer to "why not <code>brms</code> + <code>tidybayes</code> + <code>loo</code>?" My read of the code: raw-Stan flexibility, naming-convention auto-data-building, integrated interpretive diagnostics, and a checkpointed mass-univariate regimen. That's a real niche — it just isn't stated anywhere yet.</li>
+    </ol>
+
+    <h3>Candidate venues</h3>
+    <div class="rank-list">
+      <div class="rank-item primary">
+        <span class="rank-num">1</span>
+        <div>
+          <h4>Journal of Statistical Software <span class="tag">Best fit</span></h4>
+          <p>JSS reviews the code itself, not just the manuscript, and its audience is methodologists who write software — exactly this package's register. The S3 pipeline design and explicit Gelman/McElreath alignment make a natural JSS paper. Requires every item above as a hard prerequisite: JSS reviewers run <code>R CMD check</code> themselves.</p>
+        </div>
+      </div>
+      <div class="rank-item">
+        <span class="rank-num">2</span>
+        <div>
+          <h4>Journal of Open Source Software</h4>
+          <p>A short paper (~1,000 words) plus a repo with tests, docs, and an open license, reviewed in the open on GitHub — faster and lighter than JSS. Its core bar, "automated tests," is currently the package's biggest gap, but once that's closed this is a fast, low-friction complement to a JSS submission.</p>
+        </div>
+      </div>
+      <div class="rank-item">
+        <span class="rank-num">3</span>
+        <div>
+          <h4>The R Journal</h4>
+          <p>More room for a tutorial-style paper built around a worked case study — the TMS motor-threshold data under <code>dev/TMS_e1p</code> is a ready-made example. Good fit if the authors want to lean on applied narrative more than software-engineering framing.</p>
+        </div>
+      </div>
+      <div class="rank-item">
+        <span class="rank-num">4</span>
+        <div>
+          <h4>Behavior Research Methods (or a Psychonomic journal)</h4>
+          <p>Worth considering only if the audience is specifically cognitive/neuro/psych researchers and the pitch leans on the package's pedagogical, interpretation-forward diagnostics rather than on software engineering. A substantive, not software, journal — needs a "why this matters scientifically" framing rather than a software-paper one.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="closing">
+    <h2>In one line</h2>
+    <p>The engineering skeleton and the domain expertise are both already there — what's missing is the packaging discipline (dependencies, tests, docs) that turns a working lab tool into something a methodological journal, and a stranger's Stan model, can actually rely on.</p>
+  </div>
+
+  <div class="foot">stanworkflow review — prepared from a direct reading of R/infer.R, R/stanmodels.R, R/loocv.R, R/wflow.R, R/regimen.R, R/stanworkflow-package.R, DESCRIPTION, NAMESPACE, tests/, and .Rbuildignore.</div>
+
+</div>

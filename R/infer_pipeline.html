@@ -1,0 +1,337 @@
+<title>infer_contrasts Integration Map</title>
+<style>
+:root {
+  --primary: #2563eb;
+  --secondary: #7c3aed;
+  --accent: #dc2626;
+  --surface: #f8fafc;
+  --border: #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1e293b;
+    --border: #475569;
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.6;
+  padding: 2rem;
+  background: var(--surface);
+  color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+  body { color: #e2e8f0; }
+}
+
+h1, h2 { color: var(--primary); }
+
+.pipeline {
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 2rem;
+  margin: 2rem 0;
+  font-size: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pipeline { background: #0f172a; border-color: var(--border); }
+}
+
+.stage {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f0f9ff;
+  border-left: 4px solid var(--primary);
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .stage { background: #082f49; }
+}
+
+.function {
+  font-family: 'Courier New', monospace;
+  background: #e0e7ff;
+  padding: 0.2em 0.5em;
+  border-radius: 3px;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  .function { background: #312e81; color: #a5f3fc; }
+}
+
+.arrow { color: var(--accent); font-weight: bold; margin: 0 0.5em; }
+.file { color: #7c3aed; font-style: italic; font-size: 0.9em; }
+
+.box {
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+@media (prefers-color-scheme: dark) {
+  .box { background: #1e293b; }
+}
+
+.internal {
+  margin-left: 2rem;
+  padding-left: 1rem;
+  border-left: 2px dashed #7c3aed;
+}
+
+.result {
+  background: #ecfdf5;
+  border-left: 4px solid #10b981;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .result { background: #064e3b; }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9em;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--primary);
+  color: white;
+  font-weight: bold;
+}
+
+@media (prefers-color-scheme: dark) {
+  th { background: #1e40af; }
+}
+
+.code-block {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.highlight { background: #fff59d; padding: 2px 4px; border-radius: 2px; }
+
+@media (prefers-color-scheme: dark) {
+  .highlight { background: #78350f; }
+}
+</style>
+
+<h1>📊 infer_contrasts Integration Map</h1>
+<p>How <span class="function">infer_contrasts</span> bridges the Bayesian workflow, connecting data extraction, posterior inference, and statistical contrasts.</p>
+
+<h2>Call Chain: User → Pipeline</h2>
+<div class="pipeline">
+  <div class="stage">
+    <strong>1. User Entry Point</strong><br>
+    <span class="function">regimen()</span> <span class="file">(regimen.R)</span>
+    <div style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
+      Orchestrator: wraps data, contrasts, sampler params, and wflow lifecycle
+    </div>
+  </div>
+
+  <div class="stage">
+    <strong>2. Workflow Controller</strong><br>
+    <span class="function">infer.regimen()</span> <span class="arrow">→</span>
+    <span class="function">run_inference()</span> <span class="file">(regimen.R → wflow.R)</span>
+    <div style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
+      Passes control: fitted model, contrast specs, data to wflow
+    </div>
+  </div>
+
+  <div class="stage">
+    <strong>3. The Bridge Function</strong><br>
+    <span class="function">run_inference.wflow()</span> <span class="arrow">→</span>
+    <span class="function">infer_contrasts()</span> <span class="file">(wflow.R → infer.R:1317)</span>
+    <div style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
+      <strong>Centrality: 7 edges</strong> — Critical hub between:
+      <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+        <li>Posterior draws (from <span class="function">wf$post_fit</span>)</li>
+        <li>Data specification (features, grouping)</li>
+        <li>Contrast definitions (categorical, continuous, 2-way)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <strong>4. Internal Extraction Pipeline</strong><br>
+    <div class="internal">
+      <span class="function">infer_contrasts()</span> internally routes through:
+      <table>
+        <tr>
+          <th>When</th>
+          <th>Path</th>
+          <th>Purpose</th>
+        </tr>
+        <tr>
+          <td><strong>Setup</strong></td>
+          <td><span class="function">.resolve_spec()</span></td>
+          <td>Normalize outcome_spec (yrep, marginal, extensive, intensive)</td>
+        </tr>
+        <tr>
+          <td><strong>Hurdle</strong></td>
+          <td>Expand to 3 sub-contrasts</td>
+          <td>If <span class="function">os_hurdle()</span>, run all 3 margins in one pass</td>
+        </tr>
+        <tr>
+          <td><strong>Extract</strong></td>
+          <td><span class="function">.get_yrep_draws()</span></td>
+          <td>Pull posterior predictive or GQ from draws</td>
+        </tr>
+        <tr>
+          <td><strong>Method</strong></td>
+          <td>descriptive or counterfactual</td>
+          <td>Observed grouping vs. grid sweep across contrast_var</td>
+        </tr>
+        <tr>
+          <td><strong>Compute</strong></td>
+          <td><span class="function">.compute_one_contrast()</span></td>
+          <td>Hi/lo split, difference, summarize</td>
+        </tr>
+        <tr>
+          <td><strong>2-way</strong></td>
+          <td><span class="function">.compute_two_way_contrast()</span></td>
+          <td>4 scenarios: both, first only, second only, neither</td>
+        </tr>
+        <tr>
+          <td><strong>Counterfactual</strong></td>
+          <td><span class="function">.compute_counterfactual_contrast()</span></td>
+          <td>Grid-point-wise scenario or continuous contrast curve</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="stage">
+    <strong>5. Return &amp; Persist</strong><br>
+    <span class="function">inference</span> object <span class="arrow">→</span>
+    <span class="function">wf$inference[[name]]</span> <span class="arrow">→</span>
+    Saved to disk <span class="file">(regimen.R)</span>
+    <div style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
+      Result: list of posterior draws, summary stats, scenarios, credible intervals
+    </div>
+  </div>
+</div>
+
+<h2>Key Integration Points (Graph Edges)</h2>
+
+<div class="box">
+  <strong>Direct Callers (Who invokes infer_contrasts):</strong>
+  <ul>
+    <li><span class="function">run_inference()</span> — wrapper that stores results in wflow</li>
+    <li><span class="function">infer.regimen()</span> — user-facing orchestrator method</li>
+  </ul>
+</div>
+
+<div class="box">
+  <strong>Direct Callees (What infer_contrasts calls):</strong>
+  <ul>
+    <li><span class="function">.get_yrep_draws()</span> — extracts posterior predictive draws (descriptive or counterfactual)</li>
+    <li><span class="function">.compute_one_contrast()</span> — single-outcome contrasts</li>
+    <li><span class="function">.compute_two_way_contrast()</span> — multi-outcome scenario analysis</li>
+    <li><span class="function">.compute_counterfactual_contrast()</span> — grid-sweep contrasts</li>
+  </ul>
+</div>
+
+<h2>High-Betweenness Bridges (Cross-Community Connectors)</h2>
+
+<table>
+  <tr>
+    <th>Function</th>
+    <th>Centrality</th>
+    <th>Bridges</th>
+    <th>Role</th>
+  </tr>
+  <tr>
+    <td><span class="function">infer_contrasts</span></td>
+    <td>0.310 ⭐</td>
+    <td>Contrast ↔ Extraction ↔ Diagnostics</td>
+    <td><span class="highlight">Core hub</span></td>
+  </tr>
+  <tr>
+    <td><span class="function">run_inference</span></td>
+    <td>0.259</td>
+    <td>Workflow ↔ Inference ↔ Diagnostics</td>
+    <td>Adapter layer</td>
+  </tr>
+  <tr>
+    <td><span class="function">run</span></td>
+    <td>0.198</td>
+    <td>Diagnostics ↔ Fitting ↔ Inference</td>
+    <td>Orchestrator</td>
+  </tr>
+</table>
+
+<h2>Data Flow Through infer_contrasts</h2>
+
+<div class="code-block">
+<strong>INPUT:</strong>
+  model        : stanmodel (fitted posterior draws)
+  contrasts    : contrast or list of contrast objects
+  data         : tibble (features for grouping/differencing)
+  draws_method : "descriptive" or "counterfactual"
+  gq_steps     : integer (grid resolution)
+
+<strong>PROCESSING:</strong>
+  1. .resolve_spec() → determine GQ variable per outcome_spec
+  2. If hurdle: expand into 3 sub-contrasts (marginal, extensive, intensive)
+  3. Pool needed variables across all contrasts
+  4. .get_yrep_draws() → extract draws
+  5. For each contrast:
+     - Apply contrast split (hi/lo or categorical levels)
+     - Summarize per draw and grouping cell
+     - Compute contrast (hi - lo)
+     - Classify scenarios (if 2-way)
+     - Aggregate to posterior summaries
+  6. Assign to inference results
+
+<strong>OUTPUT:</strong>
+  Per contrast type:
+    descriptive + 1-way:
+      $summary   : mean/interval/P_positive per grouping cell
+      $posterior : full per-draw posterior
+
+    descriptive + 2-way:
+      $scenario_probs : 4 scenarios per grouping cell
+      $scenario_draws : per-draw classifications
+
+    counterfactual:
+      $grid_summary   : contrast vs grid point
+      $grid_posterior : full draws per point
+</strong>
+</div>
+
+<div class="result">
+  <strong>✓ Why infer_contrasts is the critical hub:</strong>
+  <ul>
+    <li><strong>Specification ↔ Extraction:</strong> Translates <span class="function">contrast</span> objects into data extraction logic</li>
+    <li><strong>Extraction ↔ Computation:</strong> Bridges posterior GQ to contrast-specific computation</li>
+    <li><strong>Three inference paths unified:</strong> 1-way, 2-way, counterfactual into single interface</li>
+    <li><strong>Final integration:</strong> Where user-specified contrasts meet fitted posterior draws</li>
+  </ul>
+</div>

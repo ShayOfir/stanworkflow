@@ -2,3 +2,4 @@
 ^renv\.lock$
 ^stanworkflow\.Rproj$
 ^\.Rproj\.user$
+^dev$

@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+dev/
+old/
+bkups/
+.vscode/
+R/graphify-out/
