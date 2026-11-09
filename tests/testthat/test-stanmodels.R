@@ -17,7 +17,7 @@ generated quantities { vector[N] y_rep; for (i in 1:N) y_rep[i] = normal_rng(mu,
 make_minimal_df <- function(n = 10) {
   data.frame(
     group = rep(c("A", "B"), each = n / 2),
-    value = rnorm(n)
+    y     = rnorm(n)
   )
 }
 
@@ -238,19 +238,19 @@ test_that("get_stan_data() auto-fills N, n_group, group_id, and outcome", {
   df           <- make_minimal_df(10)
 
   sd <- suppressMessages(
-    get_stan_data(m, df, outcome = list(y = "value"))
+    get_stan_data(m, df)
   )
 
   expect_equal(sd$N, nrow(df))
   expect_equal(sd$n_group, dplyr::n_distinct(df$group))
   expect_equal(sd$group_id, as.integer(factor(df$group)))
-  expect_equal(sd$y, df$value)
+  expect_equal(sd$y, df$y)
 })
 
 test_that("get_stan_data() messages on unfilled variables", {
   m            <- stanmodel()
   m$model_code <- make_minimal_model_code()
-  df           <- make_minimal_df(10)
+  df           <- make_minimal_df(10)["group"]
 
   expect_message(get_stan_data(m, df), regexp = "y")
 })
@@ -268,7 +268,7 @@ test_that("get_stan_data() includes skip_likelihood as NA", {
   "
   skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
   m     <- stanmodel() |> compile_from_string(code)
-  sdata <- get_stan_data(m, df = data.frame(y = rnorm(10)), outcome = list(y = "y"))
+  sdata <- get_stan_data(m, df = data.frame(y = rnorm(10)))
 
   expect_true("skip_likelihood" %in% names(sdata))
   expect_true(is.na(sdata$skip_likelihood))
@@ -304,7 +304,7 @@ test_that("fit() errors when priors argument is not a priors object", {
   df <- make_minimal_df(n)
 
   sd <- list(N = n, n_group = 2L,
-             group_id = as.integer(factor(df$group)), y = df$value)
+             group_id = as.integer(factor(df$group)), y = df$y)
 
   expect_error(
     fit(m, data = df, stan_data = sd,
@@ -322,7 +322,7 @@ test_that("fit() accepts a pre-built stan_data list", {
   sd <- list(
     N = n, n_group = 2L,
     group_id = as.integer(factor(df$group)),
-    y = df$value
+    y = df$y
   )
 
   result <- fit(m, data = df, stan_data = sd, sampler_params = fast_sampler)
@@ -354,7 +354,7 @@ test_that("fit() stores outcome_var and data on the model", {
   df <- make_minimal_df(n)
 
   sd <- list(N = n, n_group = 2L,
-             group_id = as.integer(factor(df$group)), y = df$value)
+             group_id = as.integer(factor(df$group)), y = df$y)
 
   result <- fit(m, data = df, outcome_var = "value",
                 stan_data = sd, sampler_params = fast_sampler)
@@ -372,7 +372,7 @@ test_that("fit() sets skip_likelihood = 1 when prior_predictive = TRUE", {
 
   sd <- list(N = n, n_group = 2L,
              group_id = as.integer(factor(df$group)),
-             y = df$value, skip_likelihood = 0L)
+             y = df$y, skip_likelihood = 0L)
 
   result <- fit(m, data = df, stan_data = sd,
                 prior_predictive = TRUE, sampler_params = fast_sampler)
@@ -387,7 +387,7 @@ test_that("fit() warns when prior_predictive = TRUE but skip_likelihood absent",
 
   sd <- list(N = n, n_group = 2L,
              group_id = as.integer(factor(df$group)),
-             y = df$value)
+             y = df$y)
 
   expect_warning(
     fit(m, data = df, stan_data = sd,
@@ -411,7 +411,7 @@ test_that("fit() runs with skip_likelihood = 0L (CmdStan integration)", {
   "
   df    <- data.frame(y = rnorm(10))
   m     <- stanmodel() |> compile_from_string(code)
-  sdata <- get_stan_data(m, df = df, outcome = list(y = "y"))
+  sdata <- get_stan_data(m, df = df)
   sdata$skip_likelihood <- 0L
   m$priors$prior_mu     <- 0
 
@@ -428,7 +428,7 @@ test_that("fit() merges priors object into stan_data", {
 
   sd      <- list(N = n, n_group = 2L,
                   group_id = as.integer(factor(df$group)),
-                  y = df$value, prior_mu = NA_real_)
+                  y = df$y, prior_mu = NA_real_)
   p       <- priors("prior_mu")
   p$prior_mu <- 0
 
@@ -446,7 +446,7 @@ test_that("fit() populates draws and variables, excludes lp__", {
   df <- make_minimal_df(n)
 
   sd <- list(N = n, n_group = 2L,
-             group_id = as.integer(factor(df$group)), y = df$value)
+             group_id = as.integer(factor(df$group)), y = df$y)
 
   result <- fit(m, data = df, stan_data = sd, sampler_params = fast_sampler)
 

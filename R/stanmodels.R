@@ -300,12 +300,13 @@ fit.stanmodel <- function(x,
   # Prepare data
 
      
-  stan_data <- get_stan_data(
-    x,
-    df      = data,
-    extra = extra,
-    cond_df = cond_df
-  )
+  if (is.null(stan_data))
+    stan_data <- get_stan_data(
+      x,
+      df      = data,
+      extra = extra,
+      cond_df = cond_df
+    )
    
 
   
