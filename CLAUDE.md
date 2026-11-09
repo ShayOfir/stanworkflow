@@ -42,10 +42,17 @@ devtools::test()                                  # whole suite
 testthat::test_file("tests/testthat/test-stanmodels.R")
 ```
 
-Tests: `test-stanmodels.R` (stanmodel, priors, sampler_params, data-block parser,
-`get_stan_data`, `fit`, `gq`) and `test-counterfactual.R` (draw pairing with `gq_n_draws`,
-linear identity, y_rep warning). Most need CmdStan and skip without it. Nothing yet for
-`regimen`, `wflow`, `loo_cv` or descriptive `infer_contrasts`.
+Tests: `helper-model.R` holds one tiny linear model (`y ~ a[direction] + g[group] +
+b[direction]*x`, GQ `mu_rep`, `mu0_rep`, `y_rep`, `log_lik`) compiled once per run
+(`tm_compiled()`, `tm_fit()`; also a `models/tm` folder for `regimen()`/`wflow()`).
+Because it is linear, contrasts have closed forms (b·Δx, g[k] − g[j]) and the tests check
+them draw by draw. `test-counterfactual.R` (pairing with `gq_n_draws`, identity, y_rep
+warning, categorical, the finger-paper two-way pattern), `test-infer.R` (descriptive
+contrasts recomputed by hand, HPDI, `outcome_spec`/`os_hurdle` on fake draws),
+`test-regimen.R` (lifecycle, checkpoints, `resume`, `quick_fit`, save/load),
+`test-wflow.R` (wflow steps, write/load incl. the JWileymisc-format fixture in
+`fixtures/`, ppc/diagnose), `test-loo.R`, `test-stanmodels.R`. CmdStan tests call
+`skip_if_no_cmdstan()`. Do not compile further models in tests; extend the helper model.
 
 ## Package architecture
 

@@ -7,3 +7,4 @@ old/
 bkups/
 .vscode/
 R/graphify-out/
+tests/testthat/Rplots.pdf
