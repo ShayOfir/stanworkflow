@@ -58,7 +58,9 @@ posterior sampling. Merged with package defaults via \code{modifyList()}.}
 
 \item{draws_method}{character scalar; how to generate draws for contrasts.
 \code{"counterfactual"} (default) sweeps the contrast variable across a grid;
-\code{"descriptive"} computes contrasts directly from posterior draws.}
+\code{"descriptive"} computes contrasts directly from posterior draws.
+\code{"parameter"} summarises a model parameter named in each contrast
+(\code{contrast(parameter = , factors = , delta = )}); see \code{\link[=infer_contrasts]{infer_contrasts()}}.}
 
 \item{gq_steps}{integer scalar; number of grid points for counterfactual
 sweeps (default \code{5L}). Ignored if \code{draws_method = "descriptive"}.}

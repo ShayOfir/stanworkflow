@@ -36,6 +36,8 @@
 #' @param draws_method character scalar; how to generate draws for contrasts.
 #'   `"counterfactual"` (default) sweeps the contrast variable across a grid;
 #'   `"descriptive"` computes contrasts directly from posterior draws.
+#'   `"parameter"` summarises a model parameter named in each contrast
+#'   (`contrast(parameter = , factors = , delta = )`); see [infer_contrasts()].
 #' @param gq_steps integer scalar; number of grid points for counterfactual
 #'   sweeps (default `5L`). Ignored if `draws_method = "descriptive"`.
 #' @param prob numeric scalar in  (0,1); width of highest posterior density
@@ -104,7 +106,7 @@ regimen <- function(model_name,
       stop("`contrasts` must be a fully named list.")
   }
 
-  draws_method <- match.arg(draws_method, c("counterfactual", "descriptive"))
+  draws_method <- match.arg(draws_method, c("counterfactual", "descriptive", "parameter"))
 
   prior_sp <- modifyList(sampler_params(), prior_sampler_params)
   post_sp  <- modifyList(sampler_params(), post_sampler_params)

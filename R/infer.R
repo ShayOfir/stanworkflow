@@ -140,6 +140,20 @@ print.outcome_spec_hurdle <- function(x, ...) {
 #' @param two_way_levels optional character vector of exactly 2 levels from `two_way`
 #'   variable to use as the two outcomes. If NULL, uses first 2 levels automatically.
 #' @param outcome optional outcome specification (e.g. from `os_marginal()`); NULL (default) uses the y_rep draws
+#' @param parameter character or NULL; name of a Stan parameter (e.g. `"b"`). Used
+#'   only by `infer_contrasts(draws_method = "parameter")`; see there. Default NULL.
+#' @param factors named list mapping the parameter's index positions to levels, as
+#'   in [ppc_by_parameter()], e.g. `list(direction = c("FLEX", "EXT"))`; or a
+#'   character vector of data columns, whose levels are then taken as
+#'   `levels(factor(data[[col]]))` (the order `get_stan_data()` uses for `<col>_id`).
+#'   `NULL` or empty for a scalar parameter. Parameter route only.
+#' @param delta NULL (default, raw parameter units), a number, or one of `"iqr"`,
+#'   `"q10q90"`, `"2sd"`, `"range"`: the parameter is multiplied by this change in
+#'   the predictor. The string forms are computed from the data column
+#'   `contrast_var` (requires `continuous = TRUE`). Parameter route only.
+#' @param link character; the link of the model's linear predictor (default
+#'   `"identity"`). The package cannot read it from the Stan code; a non-identity
+#'   link only triggers a message in the parameter route.
 #' @return an object of class `contrast`
 #' @export
 # ---- contrast() validation: remove the continuous + two_way guard ----------
@@ -153,7 +167,11 @@ contrast <- function(
                      filter_draws        = NULL,
                      two_way             = NULL,
                      two_way_levels      = NULL,
-                     outcome             = NULL) {
+                     outcome             = NULL,
+                     parameter           = NULL,
+                     factors             = NULL,
+                     delta               = NULL,
+                     link                = "identity") {
   if (!is.null(grouping_vars)) {
     stopifnot(is.character(grouping_vars), length(grouping_vars) >= 1)
   }
@@ -180,6 +198,10 @@ contrast <- function(
   if (!is.null(outcome)) {
     stopifnot(inherits(outcome, "outcome_spec"))
   }
+  if (!is.null(parameter)) stopifnot(is.character(parameter), length(parameter) == 1L)
+  if (!is.null(delta))
+    stopifnot(length(delta) == 1L,
+              is.numeric(delta) || delta %in% c("iqr", "q10q90", "2sd", "range"))
 
   structure(
     list(
@@ -193,6 +215,10 @@ contrast <- function(
       two_way             = two_way,
       two_way_levels      = two_way_levels,
       outcome             = outcome,
+      parameter           = parameter,
+      factors             = factors,
+      delta               = delta,
+      link                = link,
       # internal numeric_array-related meta-data:
       .array_source       = NULL,
       .array_cols         = NULL
@@ -285,6 +311,8 @@ print.contrast <- function(x, ...) {
   }
    cat("  outcome        :",
       if (is.null(x$outcome)) "y_rep (default)" else x$outcome$label, "\n")
+  if (!is.null(x$parameter))
+    cat("  parameter      :", x$parameter, " delta:", format(x$delta %||% "none"), "\n")
   invisible(x)
 }
 #' @keywords internal
@@ -360,7 +388,14 @@ print.inference <- function(x, ...) {
   cat("  Grouping vars:", 
       if (is.null(x$contrast$grouping_vars)) "<none>" 
       else paste(x$contrast$grouping_vars, collapse = ", "), "\n")
-  
+  if (!is.null(x$scale)) {   # parameter route
+    cat("  Parameter:", x$contrast$parameter, "\n")
+    cat("  Scale:", x$scale, "\n\n")
+    cat("Parameter by level:\n")
+    print(x$level_summary)
+    if (has_two_way) { cat("\nContrasts:\n"); print(x$summary) }
+  }
+
   if (has_two_way) {
     cat("  Two-way outcome:", x$contrast$two_way, "\n")
     cat("  Outcome levels:", paste(x$lv1, x$lv2, sep = " / "), "\n\n")
@@ -390,7 +425,8 @@ print.inference <- function(x, ...) {
   } else {
     # 1-way descriptive or categorical counterfactual
     cat("  Method: ", 
-        if ("contrast_var_value" %in% names(x$posterior)) "counterfactual (categorical)" 
+        if (!is.null(x$scale)) "parameter"
+        else if ("contrast_var_value" %in% names(x$posterior)) "counterfactual (categorical)"
         else "descriptive", "\n\n")
     
     if (!is.null(x$summary)) {
@@ -1274,6 +1310,8 @@ print.inference <- function(x, ...) {
 #' @param draws_method "descriptive" (default) uses observed draws grouped by features.
 #'   "counterfactual" sweeps `contrast_var` across its observed range via
 #'   `generate_quantities()` and computes contrasts against the baseline (minimum value).
+#'   "parameter" summarises the draws of a model parameter named in the contrast
+#'   (`contrast(parameter = , factors = , delta = )`); see Details.
 #' @param gq_steps     integer; grid resolution for counterfactual sweeps (default 5,
 #'   ignored for descriptive method)
 #' @param gq_n_draws   optional integer; if set, subsample this many posterior draws
@@ -1294,6 +1332,14 @@ print.inference <- function(x, ...) {
 #'   - `counterfactual` + one-way (categorical): list with `posterior`, `summary`, and `contrast`
 #'   - `counterfactual` + two-way: list with `scenario_grid` (scenario probs per grid point),
 #'     `scenario_draws` (per-draw classifications), `lv1`/`lv2`, `baseline_val`, and `contrast`
+#'
+#'   - `parameter`: list with `level_summary` (the parameter, times `delta` if given,
+#'     per factor cell: `median`, `hpdi_lo`/`hpdi_hi` (coda HPDI), `pd` (probability of
+#'     direction), `P_positive`), `summary` + `posterior` (the contrast: the same
+#'     per-cell values for `continuous = TRUE`, else the differences between levels
+#'     of `contrast_var`, draw by draw), `scale` (label of the units), `delta` (the
+#'     multiplier used, or NULL), `params`, `contrast`, and for `two_way` also
+#'     `scenario_draws`, `scenario_grid`, `lv1`/`lv2`
 #'
 #' **Single contrast with hurdle outcome** (via `os_hurdle()`):
 #'   - list with named elements `marginal`, `extensive`, `intensive`, each containing
@@ -1319,10 +1365,46 @@ print.inference <- function(x, ...) {
 #' - Counterfactual: simulates posterior predictive at each grid point of `contrast_var`,
 #'   then differences vs. baseline; produces grid-indexed results showing how contrasts
 #'   vary across the range of the contrast variable
+#' - Parameter: reads the draws of `contrast$parameter` (via [ppc_by_parameter()]),
+#'   labels its indices with `contrast$factors`, and needs no `generate_quantities()`
+#'   call. `continuous = TRUE`: the parameter is the slope of `contrast_var` and is
+#'   reported per factor cell, multiplied by `delta` if given (`"iqr"`, `"q10q90"`,
+#'   `"2sd"` (Gelman 2008), `"range"` = the span of the default counterfactual grid,
+#'   or a number). `continuous = FALSE`: `contrast_var` must be one of the factors,
+#'   and the result is the difference between two of its levels (`contrast_levels`,
+#'   second minus first) or, if `contrast_levels` is NULL, between every pair of
+#'   levels. `two_way` (another factor) classifies each draw into the four scenarios,
+#'   as [ppc_scenarios()] does. `grouping_vars` is ignored: every factor other than
+#'   `contrast_var` and `two_way` is a cell. `filter_draws` may refer to the factors.
+#'   For a model linear in `contrast_var` with an identity link, parameter times
+#'   `delta` equals the counterfactual contrast on an expectation GQ (e.g. `mu_rep`)
+#'   between two predictor values `delta` apart, draw by draw, at a fraction of the
+#'   cost. With a non-identity link (declare it with `contrast(link = )`) the
+#'   result is on the link scale; outcome-scale effects then depend on where the
+#'   other predictors are held and need the counterfactual route on an expectation
+#'   GQ (average predictive comparisons, Gelman & Pardoe 2007). A one-time message
+#'   says so.
+#'
+#' References: Gelman, A. (2008). Scaling regression inputs by dividing by two
+#' standard deviations. Statistics in Medicine 27, 2865-2873.
+#' Gelman, A. & Pardoe, I. (2007). Average predictive comparisons for models with
+#' nonlinearity, interactions, and variance components. Sociological Methodology 37, 23-51.
 #'
 #' **Two-way contrasts** (via `co$two_way`) classify each draw into one of four scenarios:
 #' affects both outcomes, first only, second only, or neither. Supported in both
 #' descriptive and counterfactual modes, for both categorical and continuous contrast variables.
+#'
+#' @examples
+#' \dontrun{
+#' # slope b[direction] of x, times the q10-q90 spread of x, with two-way scenarios
+#' co <- contrast("x", continuous = TRUE, two_way = "direction",
+#'                parameter = "b", factors = "direction", delta = "q10q90")
+#' infer_contrasts(fit, co, draws_method = "parameter")
+#' # difference between levels, draw by draw: b[FLEX] - b[EXT]
+#' infer_contrasts(fit, contrast("direction", contrast_levels = c("EXT", "FLEX"),
+#'                               parameter = "b", factors = "direction"),
+#'                 draws_method = "parameter")
+#' }
 #'
 #' @export
 infer_contrasts <- function(model,
@@ -1333,7 +1415,7 @@ infer_contrasts <- function(model,
                             summary_fn     = mean,
                             prob           = 0.95,
                             plot           = FALSE,
-                            draws_method   = c("descriptive", "counterfactual"),
+                            draws_method   = c("descriptive", "counterfactual", "parameter"),
                             gq_steps       = 2,
                             gq_n_draws     = NULL) {
   
@@ -1343,6 +1425,18 @@ infer_contrasts <- function(model,
 
   if (is.null(data))  data  <- model$data
   if (is.null(extra)) extra <- model$extra
+
+  if (draws_method == "parameter") {
+    if (any(vapply(contrasts, function(co) !identical(co$link %||% "identity", "identity"), logical(1))))
+      rlang::inform(paste0(
+        "draws_method = \"parameter\" reports effects on the linear-predictor (link) scale. ",
+        "For effects on the outcome scale use draws_method = \"counterfactual\" with an ",
+        "expectation GQ, e.g. outcome = outcome_spec(gq_var = \"mu_rep\")."),
+        .frequency = "once", .frequency_id = "stanworkflow_parameter_link")
+    res <- lapply(contrasts, function(co)
+      as_inference(.compute_parameter_contrast(model, co, data, prob), co))
+    return(if (length(res) == 1L) res[[1L]] else res)
+  }
 
   # ---- register numeric_arrays + optional column subsets ------------------
   # numeric_arrays can be:
@@ -1600,6 +1694,130 @@ infer_contrasts <- function(model,
   }
   # >>> END CHANGE
 
+}
+
+# ---- parameter route (draws_method = "parameter") ----------------------------
+
+#' Change in the predictor that multiplies the parameter (NULL = none)
+#' @keywords internal
+.delta_value <- function(co, data) {
+  d <- co$delta
+  if (is.null(d) || is.numeric(d)) return(d)
+  x <- data[[co$contrast_var]]
+  if (!isTRUE(co$continuous) || !is.numeric(x))
+    stop(sprintf(paste0(
+      "delta = \"%s\" is computed from the predictor `contrast_var`, so it needs ",
+      "continuous = TRUE and contrast_var naming a numeric column of the data ",
+      "('%s' is not). Give a numeric delta instead."), d, co$contrast_var), call. = FALSE)
+  q <- function(p) unname(stats::quantile(x, p, na.rm = TRUE))
+  switch(d,
+         iqr    = q(0.75) - q(0.25),
+         q10q90 = q(0.90) - q(0.10),
+         "2sd"  = 2 * stats::sd(x, na.rm = TRUE),
+         range  = diff(range(x, na.rm = TRUE)))
+}
+
+#' @keywords internal
+.scale_label <- function(co) {
+  d <- co$delta
+  if (is.null(d)) return("parameter")
+  if (is.numeric(d)) return(sprintf("parameter \u00d7 %g", d))
+  what <- c(iqr = "IQR", q10q90 = "q10\u2013q90", "2sd" = "2 SD", range = "range")[[d]]
+  sprintf("parameter \u00d7 \u0394(%s of %s)", what, co$contrast_var)
+}
+
+#' Median, HPDI (coda), probability of direction of a vector of draws
+#' @keywords internal
+.pd_summary <- function(v, prob) {
+  h <- coda::HPDinterval(coda::as.mcmc(v), prob = prob)
+  tibble::tibble(median = stats::median(v), hpdi_lo = h[[1]], hpdi_hi = h[[2]],
+                 pd = max(mean(v > 0), mean(v < 0)), P_positive = mean(v > 0))
+}
+
+#' One contrast by the parameter route: summaries of a parameter's draws per
+#' factor cell, differences between levels of `contrast_var`, two-way scenarios.
+#' @keywords internal
+.compute_parameter_contrast <- function(model, co, data, prob) {
+  if (is.null(co$parameter))
+    stop("draws_method = \"parameter\" needs `parameter` in every contrast, ",
+         "e.g. contrast(\"x\", continuous = TRUE, parameter = \"b\", factors = \"direction\").",
+         call. = FALSE)
+  factors <- co$factors %||% list()
+  if (is.character(factors))   # data columns -> levels in <col>_id order
+    factors <- stats::setNames(lapply(factors, function(f) levels(factor(data[[f]]))), factors)
+  fnames <- names(factors) %||% character()
+  dv     <- .delta_value(co, data)
+  scale  <- .scale_label(co)
+
+  draws <- ppc_by_parameter(model, co$parameter, factors)
+  if (length(factors) == 0L) draws <- dplyr::rename(draws, value = dplyr::all_of(co$parameter))
+  if (!is.null(dv)) draws$value <- draws$value * dv
+  if (!is.null(co$filter_draws)) draws <- dplyr::filter(draws, !!co$filter_draws)
+  id <- c(".chain", ".iteration", ".draw")
+
+  level_summary <- draws |>
+    dplyr::summarise(.pd_summary(value, prob), .by = dplyr::all_of(fnames)) |>
+    dplyr::mutate(scale = scale)
+
+  cv <- co$contrast_var
+  if (!isTRUE(co$continuous)) {
+    # differences between levels of the factor contrast_var, draw by draw
+    if (!cv %in% fnames)
+      stop(sprintf(paste0(
+        "contrast_var '%s' is not one of names(factors) (%s). Use a factor name for ",
+        "differences between its levels, or continuous = TRUE for the parameter as ",
+        "the slope of contrast_var."), cv, paste(fnames, collapse = ", ")), call. = FALSE)
+    pairs <- if (is.null(co$contrast_levels)) utils::combn(factors[[cv]], 2, simplify = FALSE)
+             else list(co$contrast_levels)
+    cells <- setdiff(fnames, cv)
+    wide  <- tidyr::pivot_wider(draws, id_cols = dplyr::all_of(c(id, cells)),
+                                names_from = dplyr::all_of(cv), values_from = "value")
+    post  <- dplyr::bind_rows(lapply(pairs, function(p) dplyr::mutate(wide,
+               contrast = .data[[p[2]]] - .data[[p[1]]],
+               contrast_label = sprintf("%s - %s", p[2], p[1]))))
+  } else {
+    cells <- fnames
+    post  <- dplyr::mutate(draws, contrast = value, contrast_label = co$parameter)
+  }
+  post <- dplyr::select(post, dplyr::all_of(c(id, cells, "contrast", "contrast_label")))
+
+  res <- list(
+    summary       = post |>
+      dplyr::summarise(.pd_summary(contrast, prob),
+                       .by = dplyr::all_of(c("contrast_label", cells))) |>
+      dplyr::mutate(prob = prob, scale = scale),
+    posterior     = post,
+    level_summary = level_summary,
+    scale         = scale,
+    delta         = dv,
+    params        = list(draws_method = "parameter", parameter = co$parameter,
+                         factors = factors, prob = prob)
+  )
+
+  outer <- c(setdiff(cells, co$two_way),
+             if (length(unique(post$contrast_label)) > 1L) "contrast_label")
+  if (!is.null(co$two_way)) {
+    tw <- co$two_way
+    if (!tw %in% cells)
+      stop(sprintf("two_way '%s' must be one of names(factors) other than contrast_var.", tw),
+           call. = FALSE)
+    lvls <- co$two_way_levels %||% as.character(factors[[tw]][1:2])
+    if (is.null(co$two_way_levels) && length(factors[[tw]]) > 2L)
+      warning(sprintf("two_way '%s' has %d levels; using the first two: '%s', '%s'.",
+                      tw, length(factors[[tw]]), lvls[1], lvls[2]), call. = FALSE)
+    res$scenario_draws <- post |>
+      dplyr::filter(.data[[tw]] %in% lvls) |>
+      tidyr::pivot_wider(id_cols = dplyr::all_of(c(id, outer)), names_from = dplyr::all_of(tw),
+                         values_from = "contrast", names_prefix = "contrast_") |>
+      .define_scenarios(paste0("contrast_", lvls[1]), paste0("contrast_", lvls[2]),
+                        lvls[1], lvls[2], effect_positive = co$effect_positive)
+    res$scenario_grid <- .compute_scenario_grid(res$scenario_draws, by_vars = outer)
+    res$lv1 <- lvls[1]
+    res$lv2 <- lvls[2]
+  }
+  co$grouping_vars <- if (length(outer)) outer   # the cells actually used; print/plot facet on them
+  res$contrast <- co
+  res
 }
 
 #' @keywords internal

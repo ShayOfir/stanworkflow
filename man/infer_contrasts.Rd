@@ -13,7 +13,7 @@ infer_contrasts(
   summary_fn = mean,
   prob = 0.95,
   plot = FALSE,
-  draws_method = c("descriptive", "counterfactual"),
+  draws_method = c("descriptive", "counterfactual", "parameter"),
   gq_steps = 2,
   gq_n_draws = NULL
 )
@@ -37,7 +37,9 @@ infer_contrasts(
 
 \item{draws_method}{"descriptive" (default) uses observed draws grouped by features.
 "counterfactual" sweeps \code{contrast_var} across its observed range via
-\code{generate_quantities()} and computes contrasts against the baseline (minimum value).}
+\code{generate_quantities()} and computes contrasts against the baseline (minimum value).
+"parameter" summarises the draws of a model parameter named in the contrast
+(\code{contrast(parameter = , factors = , delta = )}); see Details.}
 
 \item{gq_steps}{integer; grid resolution for counterfactual sweeps (default 5,
 ignored for descriptive method)}
@@ -61,6 +63,13 @@ and \code{posterior} (tibble of full draws)
 \item \code{counterfactual} + one-way (categorical): list with \code{posterior}, \code{summary}, and \code{contrast}
 \item \code{counterfactual} + two-way: list with \code{scenario_grid} (scenario probs per grid point),
 \code{scenario_draws} (per-draw classifications), \code{lv1}/\code{lv2}, \code{baseline_val}, and \code{contrast}
+\item \code{parameter}: list with \code{level_summary} (the parameter, times \code{delta} if given,
+per factor cell: \code{median}, \code{hpdi_lo}/\code{hpdi_hi} (coda HPDI), \code{pd} (probability of
+direction), \code{P_positive}), \code{summary} + \code{posterior} (the contrast: the same
+per-cell values for \code{continuous = TRUE}, else the differences between levels
+of \code{contrast_var}, draw by draw), \code{scale} (label of the units), \code{delta} (the
+multiplier used, or NULL), \code{params}, \code{contrast}, and for \code{two_way} also
+\code{scenario_draws}, \code{scenario_grid}, \code{lv1}/\code{lv2}
 }
 
 \strong{Single contrast with hurdle outcome} (via \code{os_hurdle()}):
@@ -100,9 +109,46 @@ and applies the contrast operation (hi - lo grouping, two-way scenario classific
 \item Counterfactual: simulates posterior predictive at each grid point of \code{contrast_var},
 then differences vs. baseline; produces grid-indexed results showing how contrasts
 vary across the range of the contrast variable
+\item Parameter: reads the draws of \code{contrast$parameter} (via \code{\link[=ppc_by_parameter]{ppc_by_parameter()}}),
+labels its indices with \code{contrast$factors}, and needs no \code{generate_quantities()}
+call. \code{continuous = TRUE}: the parameter is the slope of \code{contrast_var} and is
+reported per factor cell, multiplied by \code{delta} if given (\code{"iqr"}, \code{"q10q90"},
+\code{"2sd"} (Gelman 2008), \code{"range"} = the span of the default counterfactual grid,
+or a number). \code{continuous = FALSE}: \code{contrast_var} must be one of the factors,
+and the result is the difference between two of its levels (\code{contrast_levels},
+second minus first) or, if \code{contrast_levels} is NULL, between every pair of
+levels. \code{two_way} (another factor) classifies each draw into the four scenarios,
+as \code{\link[=ppc_scenarios]{ppc_scenarios()}} does. \code{grouping_vars} is ignored: every factor other than
+\code{contrast_var} and \code{two_way} is a cell. \code{filter_draws} may refer to the factors.
+For a model linear in \code{contrast_var} with an identity link, parameter times
+\code{delta} equals the counterfactual contrast on an expectation GQ (e.g. \code{mu_rep})
+between two predictor values \code{delta} apart, draw by draw, at a fraction of the
+cost. With a non-identity link (declare it with \code{contrast(link = )}) the
+result is on the link scale; outcome-scale effects then depend on where the
+other predictors are held and need the counterfactual route on an expectation
+GQ (average predictive comparisons, Gelman & Pardoe 2007). A one-time message
+says so.
 }
+
+References: Gelman, A. (2008). Scaling regression inputs by dividing by two
+standard deviations. Statistics in Medicine 27, 2865-2873.
+Gelman, A. & Pardoe, I. (2007). Average predictive comparisons for models with
+nonlinearity, interactions, and variance components. Sociological Methodology 37, 23-51.
 
 \strong{Two-way contrasts} (via \code{co$two_way}) classify each draw into one of four scenarios:
 affects both outcomes, first only, second only, or neither. Supported in both
 descriptive and counterfactual modes, for both categorical and continuous contrast variables.
+}
+\examples{
+\dontrun{
+# slope b[direction] of x, times the q10-q90 spread of x, with two-way scenarios
+co <- contrast("x", continuous = TRUE, two_way = "direction",
+               parameter = "b", factors = "direction", delta = "q10q90")
+infer_contrasts(fit, co, draws_method = "parameter")
+# difference between levels, draw by draw: b[FLEX] - b[EXT]
+infer_contrasts(fit, contrast("direction", contrast_levels = c("EXT", "FLEX"),
+                              parameter = "b", factors = "direction"),
+                draws_method = "parameter")
+}
+
 }

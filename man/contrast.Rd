@@ -14,7 +14,11 @@ contrast(
   filter_draws = NULL,
   two_way = NULL,
   two_way_levels = NULL,
-  outcome = NULL
+  outcome = NULL,
+  parameter = NULL,
+  factors = NULL,
+  delta = NULL,
+  link = "identity"
 )
 }
 \arguments{
@@ -50,6 +54,24 @@ Requires \code{continuous = FALSE}. Default NULL.}
 variable to use as the two outcomes. If NULL, uses first 2 levels automatically.}
 
 \item{outcome}{optional outcome specification (e.g. from \code{os_marginal()}); NULL (default) uses the y_rep draws}
+
+\item{parameter}{character or NULL; name of a Stan parameter (e.g. \code{"b"}). Used
+only by \code{infer_contrasts(draws_method = "parameter")}; see there. Default NULL.}
+
+\item{factors}{named list mapping the parameter's index positions to levels, as
+in \code{\link[=ppc_by_parameter]{ppc_by_parameter()}}, e.g. \code{list(direction = c("FLEX", "EXT"))}; or a
+character vector of data columns, whose levels are then taken as
+\code{levels(factor(data[[col]]))} (the order \code{get_stan_data()} uses for \verb{<col>_id}).
+\code{NULL} or empty for a scalar parameter. Parameter route only.}
+
+\item{delta}{NULL (default, raw parameter units), a number, or one of \code{"iqr"},
+\code{"q10q90"}, \code{"2sd"}, \code{"range"}: the parameter is multiplied by this change in
+the predictor. The string forms are computed from the data column
+\code{contrast_var} (requires \code{continuous = TRUE}). Parameter route only.}
+
+\item{link}{character; the link of the model's linear predictor (default
+\code{"identity"}). The package cannot read it from the Stan code; a non-identity
+link only triggers a message in the parameter route.}
 }
 \value{
 an object of class \code{contrast}

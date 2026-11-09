@@ -1,7 +1,27 @@
 # stanworkflow 0.0.0.9000 (development version)
 
+## New features
+
+* `draws_method = "parameter"` in `infer_contrasts()`, `regimen()` and
+  `run()`: inference straight from the draws of a model parameter, with no
+  `generate_quantities()` calls. The contrast carries the inputs
+  (`contrast(..., parameter = "b", factors = "direction", delta = "q10q90")`).
+  Results hold per-level summaries (median, HPDI, probability of direction),
+  differences between levels of a factor (one pair or all pairs), and two-way
+  scenarios, in the usual `inference` structure, each labelled with its
+  `scale`. `delta` (NULL, a number, `"iqr"`, `"q10q90"`, `"2sd"`, `"range"`)
+  multiplies the parameter by a change in the predictor. For a model linear in
+  the predictor with an identity link, parameter x `delta = "range"` equals the
+  counterfactual contrast on an expectation GQ draw by draw (tested).
+  `contrast(link = )` declares a non-identity link, which gives a one-time
+  message pointing to the counterfactual route for outcome-scale effects.
+* `parameter_draws()` and `parameter_scenarios()`: aliases of
+  `ppc_by_parameter()` and `ppc_scenarios()` (old names unchanged).
+
 ## Bug fixes (results can change)
 
+* `ppc_scenarios(scenario_levels = )` stopped with "object 'col1' not found";
+  the two given levels are now used as the outcome columns.
 * Counterfactual contrasts with `gq_n_draws` set paired different posterior
   draws: each grid point took a fresh random subsample and baseline and grid
   point were then joined on renumbered `.draw` ids. The subsample is now drawn

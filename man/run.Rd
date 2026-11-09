@@ -61,7 +61,7 @@ Controls which pipeline stages to execute.
 
 \item{prob}{HPDI width passed to \code{infer_contrasts()} (default 0.95)}
 
-\item{draws_method}{\code{"descriptive"} or \code{"counterfactual"} (default), passed to \code{infer_contrasts()}}
+\item{draws_method}{\code{"descriptive"}, \code{"counterfactual"} (default) or \code{"parameter"}, passed to \code{infer_contrasts()}}
 
 \item{gq_steps}{grid resolution for counterfactual sweeps (default 5)}
 

@@ -379,11 +379,11 @@ tune.wflow <- function(wf, sampler_params = NULL, file = NULL, ...) {
 #' @param file                 optional file path to save the `wflow` object after running
 #' @param summary_fn           aggregation function passed to `infer_contrasts()` (default `mean`)
 #' @param prob                 HPDI width passed to `infer_contrasts()` (default 0.95)
-#' @param draws_method         `"descriptive"` or `"counterfactual"` (default), passed to `infer_contrasts()`
+#' @param draws_method         `"descriptive"`, `"counterfactual"` (default) or `"parameter"`, passed to `infer_contrasts()`
 #' @param gq_steps             grid resolution for counterfactual sweeps (default 5)
 #' @param summary_fn           aggregation function passed to `infer_contrasts()` (default `mean`)
 #' @param prob                 HPDI width passed to `infer_contrasts()` (default 0.95)
-#' @param draws_method         `"descriptive"` or `"counterfactual"` (default), passed to `infer_contrasts()`
+#' @param draws_method         `"descriptive"`, `"counterfactual"` (default) or `"parameter"`, passed to `infer_contrasts()`
 #' @param gq_steps             grid resolution for counterfactual sweeps (default 5)
 #' @param ...                  forwarded to `run_inference()`
 #' @return the fully-populated `wflow`
