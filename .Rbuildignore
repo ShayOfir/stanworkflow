@@ -3,3 +3,11 @@
 ^stanworkflow\.Rproj$
 ^\.Rproj\.user$
 ^dev$
+^\.Rprofile$
+^\.claude$
+^\.vscode$
+^old$
+^bkups$
+^reports$
+^CLAUDE\.md$
+^LICENSE\.md$
