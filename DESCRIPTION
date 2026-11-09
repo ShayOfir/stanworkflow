@@ -2,7 +2,8 @@ Package: stanworkflow
 Title: Declarative Bayesian Workflow for Hand-Written 'Stan' Models
 Version: 0.0.0.9000
 Authors@R: 
-    person("Shay", "Ofir-Geva", , "shinofir@gmail.com", role = c("aut", "cre"))
+    person("Shay", "Ofir-Geva", , "shinofir@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7871-2778"))
 Description: Wraps 'cmdstanr' in a declarative compile, prior predictive,
     fit, diagnose and infer pipeline for user-written 'Stan' models. The
     'Stan' data block is filled from a data frame by naming convention,
