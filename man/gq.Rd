@@ -15,7 +15,12 @@ gq(x, ...)
 posterior draws, a random subsample of \code{n_draws} draws is used for
 \code{generate_quantities()} instead of the full fit. Trades Monte Carlo
 precision for speed and output size. Default \code{NULL} uses all draws
-(unchanged behavior).}
+(unchanged behavior). Each call draws a new subsample; use \code{draw_ids} when
+several calls must use the same draws.}
+
+\item{draw_ids}{optional integer vector of posterior draw indices to use
+(overrides \code{n_draws}). Pass the same ids to every call whose outputs are
+joined draw by draw.}
 
 \item{output_dir}{optional directory for CmdStan's GQ output CSVs. Default
 \code{NULL} uses a fresh temp directory that is deleted automatically after

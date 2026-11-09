@@ -708,7 +708,8 @@ print.inference <- function(x, ...) {
                          data = NULL,
                          extra = NULL,
                          cond_df = NULL,
-                         n_draws = NULL) {
+                         n_draws = NULL,
+                         draw_ids = NULL) {
   if (is.null(data))   data   <- model$data
   if (is.null(cond_df)) cond_df <- model$cond_df
   if (is.null(extra))  extra  <- model$extra
@@ -771,7 +772,7 @@ print.inference <- function(x, ...) {
   if (length(na_fields) > 0)
     stop("stan_data has NA in: ", paste(na_fields, collapse = ", "))
   
-  gq_draws <- model |> gq(new_data = stan_data, n_draws = n_draws)
+  gq_draws <- model |> gq(new_data = stan_data, n_draws = n_draws, draw_ids = draw_ids)
   gq_draws |> subset_draws(outcome_var) |> as_draws_matrix()
 }
 
@@ -952,6 +953,11 @@ print.inference <- function(x, ...) {
 
   gq_var_cf <- spec$gq_var   # <<< CHANGED from hard-coded "y_rep"
 
+  # Subsample once so every grid point uses the same posterior draws;
+  # baseline and grid point are joined on .draw below.
+  draw_ids <- if (!is.null(gq_n_draws))
+    .sample_draw_ids(posterior::ndraws(model$draws), gq_n_draws)
+
   
   cvar_grid <- NULL
 
@@ -1055,7 +1061,7 @@ print.inference <- function(x, ...) {
         contrast_var = contrast_var,
         value        = cvar_grid[i],
         outcome_var  = gq_var_cf,
-        n_draws      = gq_n_draws
+        draw_ids     = draw_ids
       )
 
       # <<< FIX: gq_i is a draws_matrix; convert and pivot to long before mutating
@@ -1078,7 +1084,7 @@ print.inference <- function(x, ...) {
         contrast_var = contrast_var,
         value        = cvar_grid[i],
         outcome_var  = gq_var_cf,
-        n_draws      = gq_n_draws
+        draw_ids     = draw_ids
       ) |>
         posterior::as_draws_df() |>                      # <<< FIX: same conversion
         .to_long_draws(data, feat_cols)
@@ -1461,6 +1467,18 @@ infer_contrasts <- function(model,
     )
   )
   # >>> END CHANGE
+
+  if (draws_method == "counterfactual" &&
+      any(vapply(expanded_contrasts, function(co) .resolve_spec(co)$gq_var == "y_rep", logical(1)))) {
+    warning(
+      "Counterfactual contrasts on 'y_rep' difference posterior predictive draws, ",
+      "so each grid point adds fresh residual noise: sign probabilities are biased ",
+      "toward 0.5 (two-way scenarios toward 0.25) and depend on the contrast levels. ",
+      "Add an expectation (e.g. mu_rep) to generated quantities and use ",
+      "`outcome_spec(gq_var = \"mu_rep\")`.",
+      call. = FALSE
+    )
+  }
 
   # ---- run per (gq_var, contrast_var) group --------------------------------
   flat_results <- vector("list", length(expanded_contrasts))

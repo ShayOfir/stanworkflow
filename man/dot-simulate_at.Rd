@@ -12,7 +12,8 @@
   data = NULL,
   extra = NULL,
   cond_df = NULL,
-  n_draws = NULL
+  n_draws = NULL,
+  draw_ids = NULL
 )
 }
 \arguments{

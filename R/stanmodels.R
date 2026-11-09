@@ -368,7 +368,11 @@ fit.stanmodel <- function(x,
 #'   posterior draws, a random subsample of `n_draws` draws is used for
 #'   `generate_quantities()` instead of the full fit. Trades Monte Carlo
 #'   precision for speed and output size. Default `NULL` uses all draws
-#'   (unchanged behavior).
+#'   (unchanged behavior). Each call draws a new subsample; use `draw_ids` when
+#'   several calls must use the same draws.
+#' @param draw_ids optional integer vector of posterior draw indices to use
+#'   (overrides `n_draws`). Pass the same ids to every call whose outputs are
+#'   joined draw by draw.
 #' @param output_dir optional directory for CmdStan's GQ output CSVs. Default
 #'   `NULL` uses a fresh temp directory that is deleted automatically after
 #'   the draws are extracted (avoids leaking temp files across repeated calls).
@@ -390,7 +394,7 @@ gq <- function(x, ...) UseMethod("gq")
 .gq_model_cache <- new.env(parent = emptyenv())
 
 #' @exportS3Method
-gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_compiled = TRUE){
+gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_compiled = TRUE, draw_ids = NULL){
   mod_gqp <- if (cache_compiled) .gq_model_cache[[x$model_code]] else NULL
   if (is.null(mod_gqp)) {
     gqp <- cmdstanr::write_stan_file(x$model_code)
@@ -399,12 +403,11 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
   }
 
   mod_fit <- x$fitted_model
-  if (!is.null(n_draws)) {
-    draws_full  <- mod_fit$draws()
-    n_available <- posterior::ndraws(draws_full)
-    idx <- if (n_available <= n_draws) seq_len(n_available) else
-      sample.int(n_available, n_draws)
-    mod_fit <- posterior::subset_draws(draws_full, draw = idx)
+  if (!is.null(draw_ids) || !is.null(n_draws)) {
+    draws_full <- mod_fit$draws()
+    if (is.null(draw_ids))
+      draw_ids <- .sample_draw_ids(posterior::ndraws(draws_full), n_draws)
+    mod_fit <- posterior::subset_draws(draws_full, draw = draw_ids)
   }
 
   pc <- x$sampler_params$parallel_chains %||% 4L
@@ -420,6 +423,12 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
   rm(fit_gq)
   if (own_dir) unlink(output_dir, recursive = TRUE)
   out
+}
+
+
+#' @keywords internal
+.sample_draw_ids <- function(n_available, n_draws) {
+  if (n_available <= n_draws) seq_len(n_available) else sample.int(n_available, n_draws)
 }
 
 
