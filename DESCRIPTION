@@ -1,28 +1,43 @@
 Package: stanworkflow
-Title: What the Package Does (One Line, Title Case)
+Title: Declarative Bayesian Workflow for Hand-Written 'Stan' Models
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person("Shay", "Ofir-Geva", , "shinofir@gmail.com", role = c("aut", "cre"))
+Description: Wraps 'cmdstanr' in a declarative compile, prior predictive,
+    fit, diagnose and infer pipeline for user-written 'Stan' models. The
+    'Stan' data block is filled from a data frame by naming convention,
+    each step checkpoints to disk so interrupted runs resume, and posterior
+    contrasts (descriptive or counterfactual, one- or two-way) are computed
+    from posterior predictive or generated-quantity draws.
+License: GPL (>= 3)
+URL: https://github.com/ShayOfir/stanworkflow
+BugReports: https://github.com/ShayOfir/stanworkflow/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
+Depends: 
+    R (>= 4.2.0)
 Imports: 
     bayesplot,
     cmdstanr,
+    coda,
     dplyr,
+    fst,
     ggplot2,
     lifecycle,
+    loo,
     matrixStats,
+    patchwork,
     posterior,
     purrr,
-    rethinking,
     rlang,
+    scales,
+    stats,
     stringr,
+    tibble,
     tidyr
 Suggests: 
     testthat (>= 3.0.0)
+Additional_repositories: https://stan-dev.r-universe.dev
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 RoxygenNote: 7.3.3
