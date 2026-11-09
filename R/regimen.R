@@ -1,11 +1,11 @@
-# regimen.R — OOP wrapper for the full Bayesian modelling regimen
+# regimen.R -- OOP wrapper for the full Bayesian modelling regimen
 
 # ---- Constructor ------------------------------------------------------------
 
 #' Create a new regimen object
 #'
 #' Instantiates a complete Bayesian modelling regimen that orchestrates the
-#' prepare → tune → fit → infer workflow. A regimen encapsulates data,
+#' prepare -> tune -> fit -> infer workflow. A regimen encapsulates data,
 #' model configuration, contrasts, sampler parameters, an underlying wflow,
 #' and inference results with explicit status tracking.
 #'
@@ -38,7 +38,7 @@
 #'   `"descriptive"` computes contrasts directly from posterior draws.
 #' @param gq_steps integer scalar; number of grid points for counterfactual
 #'   sweeps (default `5L`). Ignored if `draws_method = "descriptive"`.
-#' @param prob numeric scalar ∈ (0,1); width of highest posterior density
+#' @param prob numeric scalar in  (0,1); width of highest posterior density
 #'   intervals (HPDI) for credible intervals in summaries (default `0.95`).
 #'
 #' @return An object of class `regimen`, a list containing:
@@ -388,7 +388,7 @@ infer.regimen <- function(x,
 #' Fit posterior quickly without checks (for mass-univariate workflows)
 #'
 #' Skips prior and posterior predictive checks and diagnostics to save time
-#' and disk space. Only runs: prepare → fit. Useful for mass-univariate
+#' and disk space. Only runs: prepare -> fit. Useful for mass-univariate
 #' applications where many models are fitted across ROIs/conditions.
 #'
 #' @param x a `regimen` object (will be prepared automatically if needed)
@@ -487,7 +487,7 @@ quick_fit.regimen <- function(x,
 
 #' Execute the full regimen pipeline (with quick_fit option)
 #'
-#' Orchestrates the complete workflow: prepare → tune → fit → infer.
+#' Orchestrates the complete workflow: prepare -> tune -> fit -> infer.
 #' Individual steps can be skipped via the `steps` argument. Each step is
 #' idempotent if the corresponding wflow or inference file exists on disk.
 #'
@@ -623,7 +623,7 @@ resume.regimen <- function(x, ...) {
   if (!x$status$tuned && !file.exists(x$paths$prior)) {
     steps_needed <- c(steps_needed, "tune")
   } else if (file.exists(x$paths$prior) && !x$status$tuned) {
-    message("Prior wflow found on disk — skipping tune, will load from: ",
+    message("Prior wflow found on disk \u2014 skipping tune, will load from: ",
             x$paths$prior)
     x$status$tuned <- TRUE
   }
@@ -631,7 +631,7 @@ resume.regimen <- function(x, ...) {
   if (!x$status$fitted && !file.exists(x$paths$posterior)) {
     steps_needed <- c(steps_needed, "fit")
   } else if (file.exists(x$paths$posterior) && !x$status$fitted) {
-    message("Posterior wflow found on disk — skipping fit, will load from: ",
+    message("Posterior wflow found on disk \u2014 skipping fit, will load from: ",
             x$paths$posterior)
     x$status$fitted <- TRUE
   }
@@ -639,7 +639,7 @@ resume.regimen <- function(x, ...) {
   if (!x$status$inferred && !file.exists(x$paths$inference)) {
     steps_needed <- c(steps_needed, "infer")
   } else if (file.exists(x$paths$inference) && !x$status$inferred) {
-    message("Inference found on disk — loading from: ", x$paths$inference)
+    message("Inference found on disk \u2014 loading from: ", x$paths$inference)
     x$inference       <- readRDS(x$paths$inference)
     x$status$inferred <- TRUE
   }
@@ -747,7 +747,7 @@ update_data <- function(x, data_list) {
   x$inference <- list()
   x$status    <- list(prepared = FALSE, tuned = FALSE,
                       fitted = FALSE, inferred = FALSE)
-  message("Data updated. Status reset — re-run `run()` or individual steps.")
+  message("Data updated. Status reset \u2014 re-run `run()` or individual steps.")
   x
 }
 

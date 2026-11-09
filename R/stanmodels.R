@@ -317,7 +317,7 @@ fit.stanmodel <- function(x,
   if (is.null(priors)) priors <- x$priors
   if (!is.null(priors)) {
     stopifnot(inherits(priors, "priors"))
-    # only merge non-NA prior values — don't clobber already-set fields
+    # only merge non-NA prior values -- don't clobber already-set fields
     prior_vals <- Filter(Negate(is.na), priors)
     stan_data <- modifyList(stan_data, prior_vals)
   }
@@ -389,7 +389,7 @@ gq <- function(x, ...) UseMethod("gq")
 # Session-level cache of compiled standalone-GQ models, keyed by model_code,
 # so gq.stanmodel() only pays for write_stan_file()+cmdstan_model() once per
 # unique model within a session instead of once per call. This is purely a
-# memoization of the exact same compile call below — set cache_compiled =
+# memoization of the exact same compile call below -- set cache_compiled =
 # FALSE on gq() to bypass it entirely and get the original per-call recompile
 # behavior back with no code edit.
 .gq_model_cache <- new.env(parent = emptyenv())
@@ -445,18 +445,18 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
     p > 0.95               ~ "severe misfit"
   )
   direction <- dplyr::case_when(
-    stat_name == "mean"   & p < 0.10 ~ " — y_rep means below observed (prior/likelihood biased low)",
-    stat_name == "mean"   & p > 0.90 ~ " — y_rep means above observed (prior/likelihood biased high)",
-    stat_name == "sd"     & p < 0.10 ~ " — model under-dispersed relative to data",
-    stat_name == "sd"     & p > 0.90 ~ " — model over-dispersed relative to data",
-    stat_name == "median" & p < 0.10 ~ " — replicated medians below observed",
-    stat_name == "median" & p > 0.90 ~ " — replicated medians above observed",
-    stat_name == "mad"    & p < 0.10 ~ " — model robust spread too narrow",
-    stat_name == "mad"    & p > 0.90 ~ " — model robust spread too wide",
-    stat_name == "min"    & p < 0.10 ~ " — model does not capture lower tail",
-    stat_name == "min"    & p > 0.90 ~ " — model lower tail too extreme",
-    stat_name == "max"    & p < 0.10 ~ " — model does not capture upper tail",
-    stat_name == "max"    & p > 0.90 ~ " — model upper tail too extreme",
+    stat_name == "mean"   & p < 0.10 ~ " \u2014 y_rep means below observed (prior/likelihood biased low)",
+    stat_name == "mean"   & p > 0.90 ~ " \u2014 y_rep means above observed (prior/likelihood biased high)",
+    stat_name == "sd"     & p < 0.10 ~ " \u2014 model under-dispersed relative to data",
+    stat_name == "sd"     & p > 0.90 ~ " \u2014 model over-dispersed relative to data",
+    stat_name == "median" & p < 0.10 ~ " \u2014 replicated medians below observed",
+    stat_name == "median" & p > 0.90 ~ " \u2014 replicated medians above observed",
+    stat_name == "mad"    & p < 0.10 ~ " \u2014 model robust spread too narrow",
+    stat_name == "mad"    & p > 0.90 ~ " \u2014 model robust spread too wide",
+    stat_name == "min"    & p < 0.10 ~ " \u2014 model does not capture lower tail",
+    stat_name == "min"    & p > 0.90 ~ " \u2014 model lower tail too extreme",
+    stat_name == "max"    & p < 0.10 ~ " \u2014 model does not capture upper tail",
+    stat_name == "max"    & p > 0.90 ~ " \u2014 model upper tail too extreme",
     TRUE                             ~ ""
   )
   sprintf("p_B = %.3f [%s%s]", p, judgement, direction)
@@ -468,15 +468,15 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
   tol_hi <- nominal + 0.05
   judgement <- dplyr::case_when(
     empirical < tol_lo ~ sprintf(
-      "under-coverage (%.1f%% < nominal %.0f%%) — predictive intervals too narrow; model may be overconfident",
+      "under-coverage (%.1f%% < nominal %.0f%%) \u2014 predictive intervals too narrow; model may be overconfident",
       empirical * 100, nominal * 100
     ),
     empirical > tol_hi ~ sprintf(
-      "over-coverage (%.1f%% > nominal %.0f%%) — predictive intervals too wide; prior likely dominates likelihood",
+      "over-coverage (%.1f%% > nominal %.0f%%) \u2014 predictive intervals too wide; prior likely dominates likelihood",
       empirical * 100, nominal * 100
     ),
     TRUE ~ sprintf(
-      "near-nominal (%.1f%% ≈ %.0f%%) — well-calibrated",
+      "near-nominal (%.1f%% \u2248 %.0f%%) \u2014 well-calibrated",
       empirical * 100, nominal * 100
     )
   )
@@ -499,18 +499,18 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
     p > 0.95               ~ "severe misfit"
   )
   direction <- dplyr::case_when(
-    stat_name == "mean"   & p < 0.10 ~ " — y_rep means below observed (prior/likelihood biased low)",
-    stat_name == "mean"   & p > 0.90 ~ " — y_rep means above observed (prior/likelihood biased high)",
-    stat_name == "sd"     & p < 0.10 ~ " — model under-dispersed relative to data",
-    stat_name == "sd"     & p > 0.90 ~ " — model over-dispersed relative to data",
-    stat_name == "median" & p < 0.10 ~ " — replicated medians below observed",
-    stat_name == "median" & p > 0.90 ~ " — replicated medians above observed",
-    stat_name == "mad"    & p < 0.10 ~ " — model robust spread too narrow",
-    stat_name == "mad"    & p > 0.90 ~ " — model robust spread too wide",
-    stat_name == "min"    & p < 0.10 ~ " — model does not capture lower tail",
-    stat_name == "min"    & p > 0.90 ~ " — model lower tail too extreme",
-    stat_name == "max"    & p < 0.10 ~ " — model does not capture upper tail",
-    stat_name == "max"    & p > 0.90 ~ " — model upper tail too extreme",
+    stat_name == "mean"   & p < 0.10 ~ " \u2014 y_rep means below observed (prior/likelihood biased low)",
+    stat_name == "mean"   & p > 0.90 ~ " \u2014 y_rep means above observed (prior/likelihood biased high)",
+    stat_name == "sd"     & p < 0.10 ~ " \u2014 model under-dispersed relative to data",
+    stat_name == "sd"     & p > 0.90 ~ " \u2014 model over-dispersed relative to data",
+    stat_name == "median" & p < 0.10 ~ " \u2014 replicated medians below observed",
+    stat_name == "median" & p > 0.90 ~ " \u2014 replicated medians above observed",
+    stat_name == "mad"    & p < 0.10 ~ " \u2014 model robust spread too narrow",
+    stat_name == "mad"    & p > 0.90 ~ " \u2014 model robust spread too wide",
+    stat_name == "min"    & p < 0.10 ~ " \u2014 model does not capture lower tail",
+    stat_name == "min"    & p > 0.90 ~ " \u2014 model lower tail too extreme",
+    stat_name == "max"    & p < 0.10 ~ " \u2014 model does not capture upper tail",
+    stat_name == "max"    & p > 0.90 ~ " \u2014 model upper tail too extreme",
     TRUE                             ~ ""
   )
   sprintf("p_B = %.3f [%s%s]", p, judgement, direction)
@@ -522,15 +522,15 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
   tol_hi <- nominal + 0.05
   dplyr::case_when(
     empirical < tol_lo ~ sprintf(
-      "under-coverage (%.1f%% < nominal %.0f%%) — predictive intervals too narrow; model may be overconfident",
+      "under-coverage (%.1f%% < nominal %.0f%%) \u2014 predictive intervals too narrow; model may be overconfident",
       empirical * 100, nominal * 100
     ),
     empirical > tol_hi ~ sprintf(
-      "over-coverage (%.1f%% > nominal %.0f%%) — predictive intervals too wide; prior likely dominates likelihood",
+      "over-coverage (%.1f%% > nominal %.0f%%) \u2014 predictive intervals too wide; prior likely dominates likelihood",
       empirical * 100, nominal * 100
     ),
     TRUE ~ sprintf(
-      "near-nominal (%.1f%% ≈ %.0f%%) — well-calibrated",
+      "near-nominal (%.1f%% \u2248 %.0f%%) \u2014 well-calibrated",
       empirical * 100, nominal * 100
     )
   )
@@ -539,7 +539,7 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 #' Run a single PPC for one (y_obs, y_rep_mat) pair
 #'
 #' @param y_obs      numeric vector of observed values
-#' @param y_rep_mat  draws matrix (n_draws × n_obs)
+#' @param y_rep_mat  draws matrix (n_draws x n_obs)
 #' @param obs_var    character label used in plot titles
 #' @param n_draws    number of draws to use for density overlay
 #' @return a `ppc_results` object
@@ -566,7 +566,7 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
   T_rep <- vapply(stats, function(f) {
     apply(y_rep_mat, 1L, f)
   }, numeric(nrow(y_rep_mat)))
-  # T_rep is n_draws × n_stats after vapply; transpose to n_stats × n_draws
+  # T_rep is n_draws x n_stats after vapply; transpose to n_stats x n_draws
   if (is.matrix(T_rep)) T_rep <- t(T_rep)
 
   bayes_pvalues <- vapply(names(stats), function(s) {
@@ -582,11 +582,11 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
   )
 
   # ---- plots --------------------------------------------------------------
-  title_base <- sprintf("— %s (Gabry et al.)", obs_var)
+  title_base <- sprintf("\u2014 %s (Gabry et al.)", obs_var)
 
   p_density <- bayesplot::ppc_dens_overlay(y_obs, y_rep_sub) +
     ggplot2::labs(
-      title    = sprintf("Density overlay — %s", obs_var),
+      title    = sprintf("Density overlay \u2014 %s", obs_var),
       subtitle = "Dark line = observed y; light lines = y_rep draws."
     )
 
@@ -702,7 +702,7 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
     }
 
     p_out +
-      ggplot2::labs(title = sprintf("%s — %s", pnm, obs_var))
+      ggplot2::labs(title = sprintf("%s \u2014 %s", pnm, obs_var))
   })
 
   # Name the result list with plot names
@@ -725,14 +725,14 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 #'   densities vs. observed. Too narrow = overconfident model; too wide =
 #'   prior dominates.
 #' - *Marginal test statistics* (`ppc_stat`): mean, sd, median, mad, min, max.
-#'   Bayesian p-value p_B = P(T(y_rep) ≥ T(y)). Values outside (0.05, 0.95)
-#'   flag misfit in that dimension (Gelman BDA3 §6.3).
-#' - *Joint mean–sd plot* (`ppc_stat_2d`): Gabry et al. primary visual
+#'   Bayesian p-value p_B = P(T(y_rep) >= T(y)). Values outside (0.05, 0.95)
+#'   flag misfit in that dimension (Gelman BDA3 Sec. 6.3).
+#' - *Joint mean-sd plot* (`ppc_stat_2d`): Gabry et al. primary visual
 #'   recommendation. The observed point should sit inside the bulk of the
-#'   cloud; peripheral placement signals systematic location–scale misfit.
+#'   cloud; peripheral placement signals systematic location-scale misfit.
 #' - *Coverage calibration*: empirical coverage of 50% and 90% predictive
-#'   intervals. Systematic under-coverage → too tight; over-coverage → too
-#'   wide (Gelman et al. 2020 §4).
+#'   intervals. Systematic under-coverage -> too tight; over-coverage -> too
+#'   wide (Gelman et al. 2020 Sec. 4).
 #'
 #' @param x a fitted `stanmodel` object
 #' @param n_draws number of y_rep draws for the density overlay (default 50)
@@ -1088,17 +1088,17 @@ grouped_ppc.stanmodel <- function(x,
   }
 
   # ---- extract y_rep as draws_df ------------------------------------------
-  # result: S rows (draws) × N columns (y_rep[1]...y_rep[N]) + draw metadata
+  # result: S rows (draws) x N columns (y_rep[1]...y_rep[N]) + draw metadata
   y_rep_df <- draws |>
     posterior::subset_draws(variable = "y_rep") |>
-    posterior::as_draws_df()                       # S × (N + 3 metadata cols)
+    posterior::as_draws_df()                       # S x (N + 3 metadata cols)
 
   n_obs   <- ncol(y_rep_df) - 3L  # subtract .chain, .iteration, .draw
   n_draws <- nrow(y_rep_df)
 
   if (n_obs != nrow(df)) {
     stop(sprintf(
-      "y_rep has %d observations but df has %d rows — they must match.",
+      "y_rep has %d observations but df has %d rows \u2014 they must match.",
       n_obs, nrow(df)
     ))
   }
@@ -1115,7 +1115,7 @@ grouped_ppc.stanmodel <- function(x,
       .obs_idx = as.integer(stringr::str_extract(.obs_idx, "(?<=\\[)\\d+"))
     )
   
-   # define cols_to_tile here — outcome + features to carry through
+   # define cols_to_tile here -- outcome + features to carry through
     cols_to_tile <- c(outcome_name, fnames)   # <-- add this line
 
   # ---- repeat factor + outcome columns to match long format ---------------
@@ -1125,7 +1125,7 @@ grouped_ppc.stanmodel <- function(x,
     dplyr::select(dplyr::all_of(cols_to_tile)) |>
     dplyr::slice(rep(seq_len(nrow(df)), times = n_draws))
 
-  # ---- bind columns directly — no join needed -----------------------------
+  # ---- bind columns directly -- no join needed -----------------------------
   out <- dplyr::bind_cols(y_rep_long, factors_repeated) |>
     dplyr::select(
       .chain, .iteration, .draw,
@@ -1282,7 +1282,7 @@ display.ppc_results_grouped <- function(x, ...) {
     ncol = ncol_grid
   ) +
     patchwork::plot_annotation(
-      title = "Posterior Predictive Check — Density Overlay"
+      title = "Posterior Predictive Check \u2014 Density Overlay"
     )
 
   print(g_density)
@@ -1295,12 +1295,12 @@ display.ppc_results_grouped <- function(x, ...) {
     ncol = ncol_grid
   ) +
     patchwork::plot_annotation(
-      title = "Posterior Predictive Check — Mean vs. SD"
+      title = "Posterior Predictive Check \u2014 Mean vs. SD"
     )
   print(g_mean_sd)
   
 
- invisible(x)  # ← Changed from return(list(...))
+ invisible(x)  # <- Changed from return(list(...))
 }
 
 #' Convergence diagnostics for fitted stanmodel
@@ -1338,7 +1338,7 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE) {
   
   cat("\n====================\n Convergence Summary\n====================\n")
   
-  # default to scalar parameters only for plots — exclude y_rep and log_lik
+  # default to scalar parameters only for plots -- exclude y_rep and log_lik
   plot_params <- if (!is.null(params)) params else {
     x$variables[!grepl("^y_rep|^log_lik", x$variables)]
   }
@@ -1410,24 +1410,24 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE) {
       )
     print(g_trace)
 
-    # ---- McElreath trankplots (Statistical Rethinking §9.5) ---------------
+    # ---- McElreath trankplots (Statistical Rethinking Sec. 9.5) ---------------
     # Draws are ranked across all chains combined; rank histograms per chain
     # are plotted. Interpretation:
-    #   Uniform histogram → chain explored the full posterior (good mixing)
-    #   U-shape           → chain stuck at tails (poor mixing)
-    #   Humped shape      → chain stuck in centre (poor mixing)
-    #   Chains diverge    → non-stationarity or poor initialisation
-    cat("\n--- Trankplots (McElreath SR2 §9.5) ---\n")
+    #   Uniform histogram -> chain explored the full posterior (good mixing)
+    #   U-shape           -> chain stuck at tails (poor mixing)
+    #   Humped shape      -> chain stuck in centre (poor mixing)
+    #   Chains diverge    -> non-stationarity or poor initialisation
+    cat("\n--- Trankplots (McElreath SR2 \u00a79.5) ---\n")
     g_trank_overlay <- bayesplot::mcmc_rank_overlay(draws) +
       ggplot2::labs(
-        title    = "Trankplots — rank overlay",
-        subtitle = "Uniform, overlapping lines across chains = good mixing (McElreath SR2 §9.5)."
+        title    = "Trankplots \u2014 rank overlay",
+        subtitle = "Uniform, overlapping lines across chains = good mixing (McElreath SR2 \u00a79.5)."
       )
     print(g_trank_overlay)
 
     g_trank_hist <- bayesplot::mcmc_rank_hist(draws) +
       ggplot2::labs(
-        title    = "Trankplots — rank histograms",
+        title    = "Trankplots \u2014 rank histograms",
         subtitle = "Uniform histograms per chain = good. U-shape or hump = poor mixing."
       )
     print(g_trank_hist)
@@ -1566,7 +1566,7 @@ ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NU
 #' @param factors        named list mapping factor names to their levels, passed to
 #'                       `ppc_by_parameter()` (e.g. `list(direction = c("FLEX","EXT"), finger = c("T","I","M","R","L"))`)
 #' @param scenario_factor character; name of the factor in `factors` to use for constructing
-#'                       2-way scenarios — its first two levels become the outcome columns
+#'                       2-way scenarios -- its first two levels become the outcome columns
 #'                       (e.g. "direction" with levels c("FLEX", "EXT"))
 #' @param scenario_levels optional character vector of length 2; custom outcome levels to use
 #'                       instead of the first two levels of `scenario_factor`. If NULL, 
@@ -1635,7 +1635,7 @@ ppc_scenarios.stanmodel <- function(x,
     lv2 <- scenario_labels[2]
   }
 
-  # 1. Extract wide draws — one column per level of widen_factor
+  # 1. Extract wide draws -- one column per level of widen_factor
   draws_wide <- ppc_by_parameter(x,
                                  parameter    = parameter,
                                  factors      = factors,

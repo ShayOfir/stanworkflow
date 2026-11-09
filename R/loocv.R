@@ -35,7 +35,7 @@ print.loo_results <- function(x, plot = FALSE, ...) {
   }
 
   k_counts <- table(x$pareto_k$category)
-  cat("\n--- Pareto-k summary (McElreath SR2 §7.5) ---\n")
+  cat("\n--- Pareto-k summary (McElreath SR2 \u00a77.5) ---\n")
   for (nm in names(k_counts)) {
     cat(sprintf("  %-26s: %d\n", nm, k_counts[[nm]]))
   }
@@ -57,7 +57,7 @@ print.loo_results <- function(x, plot = FALSE, ...) {
   looic_val <- est["looic",    "Estimate"]
 
   # ---- elpd_loo -----------------------------------------------------------
-  # Gelman et al. (2020) §7: elpd_loo approximates expected log pointwise
+  # Gelman et al. (2020) Sec. 7: elpd_loo approximates expected log pointwise
   # predictive density for new data; interpretation is relative across models.
   # A difference > 4 SE between models is considered practically meaningful.
   elpd_interp <- sprintf(
@@ -66,20 +66,20 @@ print.loo_results <- function(x, plot = FALSE, ...) {
   )
 
   # ---- p_loo --------------------------------------------------------------
-  # McElreath SR2 §7.4: p_loo is the effective number of parameters —
+  # McElreath SR2 Sec. 7.4: p_loo is the effective number of parameters --
   # analogous to the penalty term in WAIC. p_loo >> nominal parameter count
   # signals overfitting, influential observations, or model misspecification
   # (common with heavy-tailed or poorly-identified parameters).
   p_ratio <- p_loo_val / max(n_params, 1)
   p_flag  <- if (p_ratio > 2)
-    "WARNING: p_loo >> nominal parameter count — possible overfitting or\n    misspecification (McElreath SR2 §7.4, Gelman 2020 §7)."
+    "WARNING: p_loo >> nominal parameter count \u2014 possible overfitting or\n    misspecification (McElreath SR2 \u00a77.4, Gelman 2020 \u00a77)."
   else if (p_ratio > 1)
     "Slightly elevated relative to nominal; inspect high-k observations."
   else
-    "Plausible relative to model size — penalty consistent with complexity."
+    "Plausible relative to model size \u2014 penalty consistent with complexity."
 
   p_loo_interp <- sprintf(
-    "p_loo = %.2f  (nominal scalar params ≈ %d, ratio %.1f)\n    %s",
+    "p_loo = %.2f  (nominal scalar params \u2248 %d, ratio %.1f)\n    %s",
     p_loo_val, n_params, p_ratio, p_flag
   )
 
@@ -89,11 +89,11 @@ print.loo_results <- function(x, plot = FALSE, ...) {
 
 #' @keywords internal
 .categorise_pareto_k <- function(k_vals) {
-  # McElreath SR2 §7.5 & Vehtari et al. (2017):
-  #   k < 0.5              → PSIS estimate reliable
-  #   0.5 ≤ k < 0.7        → OK; some caution warranted
-  #   0.7 ≤ k < 1.0        → bad; high-influence observation; IS unreliable
-  #   k ≥ 1.0              → very bad; PSIS fails; moments may not exist
+  # McElreath SR2 Sec. 7.5 & Vehtari et al. (2017):
+  #   k < 0.5              -> PSIS estimate reliable
+  #   0.5 <= k < 0.7        -> OK; some caution warranted
+  #   0.7 <= k < 1.0        -> bad; high-influence observation; IS unreliable
+  #   k >= 1.0              -> very bad; PSIS fails; moments may not exist
   dplyr::tibble(obs = seq_along(k_vals), pareto_k = k_vals) |>
     dplyr::mutate(
       category = dplyr::case_when(
@@ -117,16 +117,16 @@ print.loo_results <- function(x, plot = FALSE, ...) {
   n_bad   <- sum(k >= 0.7)
   n_vbad  <- sum(k >= 1.0)
 
-  # McElreath SR2 §7.5: high-k observations are "influential" — the posterior
+  # McElreath SR2 Sec. 7.5: high-k observations are "influential" -- the posterior
   # would shift substantially if they were removed. They are not necessarily
   # outliers in the residual sense but deserve substantive scrutiny.
   dplyr::case_when(
     n_vbad > 0 ~ sprintf(
-      "%d obs with k \u2265 1.0: PSIS approximation unreliable for these points.\n    PSIS-LOO elpd estimate may be biased. Options (Gelman 2020 §7):\n      (a) refit with moment_matching = TRUE\n      (b) exact LOO for the %d flagged observations\n      (c) investigate whether these are genuine outliers warranting\n          a more robust likelihood (e.g. Student-t).",
+      "%d obs with k \u2265 1.0: PSIS approximation unreliable for these points.\n    PSIS-LOO elpd estimate may be biased. Options (Gelman 2020 \u00a77):\n      (a) refit with moment_matching = TRUE\n      (b) exact LOO for the %d flagged observations\n      (c) investigate whether these are genuine outliers warranting\n          a more robust likelihood (e.g. Student-t).",
       n_vbad, n_vbad
     ),
     n_bad > 0 ~ sprintf(
-      "%d obs with k \u2265 0.7: high-influence observations detected.\n    PSIS estimate less reliable; consider moment_matching = TRUE.\n    Substantively: inspect these observations — are they outliers,\n    leverage points, or evidence of model misspecification?\n    (McElreath SR2 §7.5; Gelman 2020 §7).",
+      "%d obs with k \u2265 0.7: high-influence observations detected.\n    PSIS estimate less reliable; consider moment_matching = TRUE.\n    Substantively: inspect these observations \u2014 are they outliers,\n    leverage points, or evidence of model misspecification?\n    (McElreath SR2 \u00a77.5; Gelman 2020 \u00a77).",
       n_bad
     ),
     TRUE ~ sprintf(
@@ -174,7 +174,7 @@ print.loo_results <- function(x, plot = FALSE, ...) {
 #'
 #' **Conceptual grounding:**
 #'
-#' *Gelman et al. (2020) §7 — Model comparison and stacking:*
+#' *Gelman et al. (2020) Sec. 7 -- Model comparison and stacking:*
 #' LOO-CV is the preferred comparison tool in the Bayesian workflow because it
 #' estimates out-of-sample predictive accuracy without refitting the model. The
 #' workflow recommendation is to first check each model's absolute fit via
@@ -183,32 +183,32 @@ print.loo_results <- function(x, plot = FALSE, ...) {
 #' trusted. `loo_compare()` differences should be interpreted relative to their
 #' SE: a difference < 2 SE is not decisive.
 #'
-#' *McElreath SR2 §7 — Ulysses' Compass:*
+#' *McElreath SR2 Sec. 7 -- Ulysses' Compass:*
 #' Information criteria penalise complexity to balance underfitting and
-#' overfitting (the bias–variance tradeoff McElreath frames as "Scylla and
+#' overfitting (the bias-variance tradeoff McElreath frames as "Scylla and
 #' Charybdis"). PSIS-LOO approximates LOOCV and is preferable to WAIC when
 #' Pareto-k diagnostics are examined alongside it. `p_loo` is the "effective
-#' number of parameters" — McElreath's penalty term. When `p_loo` >> the
+#' number of parameters" -- McElreath's penalty term. When `p_loo` >> the
 #' nominal parameter count the model is either overfitting or misspecified
-#' (SR2 §7.5). The Pareto-k per-observation diagnostic directly reveals
+#' (SR2 Sec. 7.5). The Pareto-k per-observation diagnostic directly reveals
 #' *which* observations drive complexity; McElreath recommends inspecting
 #' high-k points substantively rather than just statistically.
 #'
 #' **Metrics:**
 #' - *elpd_loo*: expected log pointwise predictive density; higher = better
-#'   out-of-sample accuracy (SR2 §7.3, Gelman §7).
-#' - *p_loo*: effective parameters. Compare to nominal count (Gelman §7,
-#'   SR2 §7.5).
-#' - *looic*: -2 × elpd_loo, deviance scale. Lower = better. Use for
-#'   `loo_compare()` across models fit to the same data (SR2 §7.4).
-#' - *Pareto-k*: per-observation stability. k < 0.5 good; 0.5–0.7 OK;
-#'   0.7–1.0 problematic (high-influence observation); > 1.0 PSIS fails.
-#'   McElreath SR2 §7.5: high-k points are not outliers to discard — they are
+#'   out-of-sample accuracy (SR2 Sec. 7.3, Gelman Sec. 7).
+#' - *p_loo*: effective parameters. Compare to nominal count (Gelman Sec. 7,
+#'   SR2 Sec. 7.5).
+#' - *looic*: -2 x elpd_loo, deviance scale. Lower = better. Use for
+#'   `loo_compare()` across models fit to the same data (SR2 Sec. 7.4).
+#' - *Pareto-k*: per-observation stability. k < 0.5 good; 0.5-0.7 OK;
+#'   0.7-1.0 problematic (high-influence observation); > 1.0 PSIS fails.
+#'   McElreath SR2 Sec. 7.5: high-k points are not outliers to discard -- they are
 #'   the most *informative* observations and deserve substantive scrutiny.
 #'
 #' @param x a fitted `stanmodel` object
 #' @param moment_matching logical; apply moment matching for k > 0.7 obs
-#'   (requires `loo` >= 2.4.0). Gelman §7 recommends this before discarding
+#'   (requires `loo` >= 2.4.0). Gelman Sec. 7 recommends this before discarding
 #'   the LOO estimate. Default FALSE.
 #' @param plot logical; render Pareto-k plot. Default FALSE.
 #' @param r_eff logical; compute relative ESS correction for MCMC draws
@@ -221,8 +221,8 @@ print.loo_results <- function(x, plot = FALSE, ...) {
 #'     \item{`interpretation`}{named list of human-readable strings}
 #'   }
 #' @references
-#'   Gelman et al. (2020). Bayesian Workflow. arXiv:2011.01808 §7.
-#'   McElreath (2020). Statistical Rethinking 2e. CRC Press. §7.
+#'   Gelman et al. (2020). Bayesian Workflow. arXiv:2011.01808 Sec. 7.
+#'   McElreath (2020). Statistical Rethinking 2e. CRC Press. Sec. 7.
 #'   Vehtari, Gelman & Gabry (2017). Practical Bayesian model evaluation
 #'     using LOO-CV and WAIC. *Stat Comput* 27(5).
 #' @importFrom posterior subset_draws as_draws_matrix
@@ -251,7 +251,7 @@ loo_cv.stanmodel <- function(x,
 
   # ---- extract log_lik [S x N] --------------------------------------------
   log_lik_mat <- posterior::subset_draws(x$draws, variable = "log_lik") |>
-    posterior::as_draws_matrix()                                  # [S × N]
+    posterior::as_draws_matrix()                                  # [S x N]
 
   # ---- relative ESS correction (Vehtari et al. 2017) ---------------------
   # Corrects for the fact that MCMC draws are autocorrelated, not i.i.d.
@@ -266,10 +266,10 @@ loo_cv.stanmodel <- function(x,
     rep(1, ncol(log_lik_mat))
   }
 
-  # ---- PSIS-LOO (McElreath SR2 §7.5, Gelman §7) --------------------------
+  # ---- PSIS-LOO (McElreath SR2 Sec. 7.5, Gelman Sec. 7) --------------------------
   loo_obj <- loo::loo(log_lik_mat, r_eff = r_eff_vals)
 
-  # Moment matching: Gelman §7 — before concluding LOO is unreliable for
+  # Moment matching: Gelman Sec. 7 -- before concluding LOO is unreliable for
   # high-k observations, attempt to stabilise via moment matching.
   if (moment_matching) {
     loo_obj <- loo::loo(
@@ -288,19 +288,19 @@ loo_cv.stanmodel <- function(x,
   )
 
   # ---- per-observation Pareto-k tibble ------------------------------------
-  # McElreath SR2 §7.5: treat high-k points as substantively interesting,
+  # McElreath SR2 Sec. 7.5: treat high-k points as substantively interesting,
   # not as errors to remove.
   k_vals   <- loo_obj$diagnostics$pareto_k
   pareto_k <- dplyr::tibble(obs = seq_along(k_vals), pareto_k = k_vals) |>
     dplyr::mutate(
       category = dplyr::case_when(
         pareto_k < 0.5 ~ "good (< 0.5)",
-        pareto_k < 0.7 ~ "ok (0.5–0.7)",
-        pareto_k < 1.0 ~ "bad (0.7–1.0)",
+        pareto_k < 0.7 ~ "ok (0.5\u20130.7)",
+        pareto_k < 1.0 ~ "bad (0.7\u20131.0)",
         TRUE           ~ "very bad (> 1.0)"
       ),
       category = factor(category, levels = c(
-        "good (< 0.5)", "ok (0.5–0.7)", "bad (0.7–1.0)", "very bad (> 1.0)"
+        "good (< 0.5)", "ok (0.5\u20130.7)", "bad (0.7\u20131.0)", "very bad (> 1.0)"
       ))
     )
 
@@ -313,7 +313,7 @@ loo_cv.stanmodel <- function(x,
   looic_val  <- est["looic", "Estimate"]
   looic_se   <- est["looic", "SE"]
 
-    # Nominal scalar parameter count — exclude observation-level auxiliaries
+    # Nominal scalar parameter count -- exclude observation-level auxiliaries
   # Must count *scalar* parameters from draws, not top-level variable names
   n_params <- posterior::subset_draws(
     x$draws,
@@ -327,9 +327,9 @@ loo_cv.stanmodel <- function(x,
     elpd_loo = sprintf(
       paste0(
         "elpd_loo = %.2f (SE %.2f).\n",
-        "  Higher = better out-of-sample predictive accuracy (McElreath SR2 §7.3).\n",
-        "  Interpret differences between models relative to SE: |Δelpd| < 2×SE is not decisive\n",
-        "  (Gelman 2020 §7). Use loo::loo_compare() for formal comparison."
+        "  Higher = better out-of-sample predictive accuracy (McElreath SR2 \u00a77.3).\n",
+        "  Interpret differences between models relative to SE: |\u0394elpd| < 2\u00d7SE is not decisive\n",
+        "  (Gelman 2020 \u00a77). Use loo::loo_compare() for formal comparison."
       ),
       elpd_val, elpd_se
     ),
@@ -337,9 +337,9 @@ loo_cv.stanmodel <- function(x,
     looic = sprintf(
       paste0(
         "looic = %.2f (SE %.2f).\n",
-        "  Deviance scale: -2 × elpd_loo. Lower = better.\n",
+        "  Deviance scale: -2 \u00d7 elpd_loo. Lower = better.\n",
         "  Comparable to AIC/DIC but estimates true out-of-sample deviance\n",
-        "  (McElreath SR2 §7.4). Only meaningful in comparison across models\n",
+        "  (McElreath SR2 \u00a77.4). Only meaningful in comparison across models\n",
         "  fit to identical data."
       ),
       looic_val, looic_se
@@ -349,14 +349,14 @@ loo_cv.stanmodel <- function(x,
       ratio <- p_loo_val / max(n_params, 1)
       severity <- dplyr::case_when(
         ratio > 3 ~
-          "SEVERE: p_loo >> nominal params — strong evidence of overfitting or\n  model misspecification. The posterior is too flexible relative to the data\n  (McElreath SR2 §7.5, Gelman 2020 §7). Revisit the likelihood or priors.",
+          "SEVERE: p_loo >> nominal params \u2014 strong evidence of overfitting or\n  model misspecification. The posterior is too flexible relative to the data\n  (McElreath SR2 \u00a77.5, Gelman 2020 \u00a77). Revisit the likelihood or priors.",
         ratio > 2 ~
-          "WARNING: p_loo moderately exceeds nominal params — possible misspecification.\n  Run ppc() to check where the model fails (Gelman 2020 §4 + §7).",
+          "WARNING: p_loo moderately exceeds nominal params \u2014 possible misspecification.\n  Run ppc() to check where the model fails (Gelman 2020 \u00a74 + \u00a77).",
         TRUE ~
-          "p_loo plausible relative to nominal parameter count — no obvious overfitting."
+          "p_loo plausible relative to nominal parameter count \u2014 no obvious overfitting."
       )
       sprintf(
-        "p_loo = %.2f (nominal params ≈ %d, ratio = %.1f).\n  %s",
+        "p_loo = %.2f (nominal params \u2248 %d, ratio = %.1f).\n  %s",
         p_loo_val, n_params, ratio, severity
       )
     },
@@ -366,9 +366,9 @@ loo_cv.stanmodel <- function(x,
         paste0(
           "%d observation(s) with k > 1.0: PSIS approximation has failed for these points.\n",
           "  %d obs have k > 0.7 total.\n",
-          "  Action (Gelman 2020 §7): (1) try moment_matching = TRUE; (2) refit without\n",
-          "  those observations for exact LOO; (3) inspect them substantively —\n",
-          "  McElreath SR2 §7.5 notes high-k points reveal where the model is most\n",
+          "  Action (Gelman 2020 \u00a77): (1) try moment_matching = TRUE; (2) refit without\n",
+          "  those observations for exact LOO; (3) inspect them substantively \u2014\n",
+          "  McElreath SR2 \u00a77.5 notes high-k points reveal where the model is most\n",
           "  sensitive to individual data and may signal model misspecification."
         ),
         n_very_bad, n_bad
@@ -378,16 +378,16 @@ loo_cv.stanmodel <- function(x,
           "%d observation(s) with k > 0.7 (high influence on posterior).\n",
           "  PSIS estimate is unreliable for these points.\n",
           "  Action: try moment_matching = TRUE, or inspect the high-k observations\n",
-          "  substantively (McElreath SR2 §7.5). These are the observations the model\n",
-          "  learns from most — they deserve scientific scrutiny, not automatic removal."
+          "  substantively (McElreath SR2 \u00a77.5). These are the observations the model\n",
+          "  learns from most \u2014 they deserve scientific scrutiny, not automatic removal."
         ),
         n_bad
       ),
       TRUE ~ sprintf(
         paste0(
-          "All Pareto-k < 0.7 (%d < 0.5; %d in 0.5–0.7).\n",
+          "All Pareto-k < 0.7 (%d < 0.5; %d in 0.5\u20130.7).\n",
           "  PSIS-LOO approximation is reliable (Vehtari et al. 2017).\n",
-          "  The LOO estimate can be trusted for model comparison (Gelman 2020 §7)."
+          "  The LOO estimate can be trusted for model comparison (Gelman 2020 \u00a77)."
         ),
         sum(k_vals < 0.5), sum(k_vals >= 0.5 & k_vals < 0.7)
       )
@@ -409,7 +409,7 @@ loo_cv.stanmodel <- function(x,
   k_counts <- table(pareto_k$category)
   for (nm in names(k_counts)) cat(sprintf("  %-22s : %d\n", nm, k_counts[[nm]]))
 
-  cat("\n--- Interpretation (Gelman 2020 §7; McElreath SR2 §7) ---\n")
+  cat("\n--- Interpretation (Gelman 2020 \u00a77; McElreath SR2 \u00a77) ---\n")
   for (nm in names(interp)) {
     cat(sprintf("\n[%s]\n  %s\n", nm, interp[[nm]]))
   }
@@ -418,8 +418,8 @@ loo_cv.stanmodel <- function(x,
   if (plot) {
     k_colours <- c(
       "good (< 0.5)"     = "#2166ac",
-      "ok (0.5–0.7)"     = "#92c5de",
-      "bad (0.7–1.0)"    = "#f4a582",
+      "ok (0.5\u20130.7)"     = "#92c5de",
+      "bad (0.7\u20131.0)"    = "#f4a582",
       "very bad (> 1.0)" = "#d6604d"
     )
     g <- ggplot2::ggplot(
@@ -441,8 +441,8 @@ loo_cv.stanmodel <- function(x,
       ggplot2::labs(
         title    = "PSIS-LOO Pareto-k diagnostics",
         subtitle = paste0(
-          "k < 0.5: reliable  |  0.5–0.7: ok  |  > 0.7: high influence  |  > 1.0: PSIS fails\n",
-          "High-k points = most informative observations (McElreath SR2 §7.5) — inspect substantively."
+          "k < 0.5: reliable  |  0.5\u20130.7: ok  |  > 0.7: high influence  |  > 1.0: PSIS fails\n",
+          "High-k points = most informative observations (McElreath SR2 \u00a77.5) \u2014 inspect substantively."
         ),
         x = "Observation index",
         y = "Pareto k"

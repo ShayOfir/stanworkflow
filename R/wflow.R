@@ -1,4 +1,4 @@
-# wflow.R — Bayesian modelling workflow S3 class
+# wflow.R -- Bayesian modelling workflow S3 class
 # Wraps the compile -> prior_predictive -> fit -> diagnose -> infer lifecycle.
 
 # ---- Constructor -----------------------------------------------------------

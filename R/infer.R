@@ -67,7 +67,7 @@ os_yrep <- function(filter_sentinel = FALSE, sentinel_value = 0.001) {
 }
 
 #' Marginal expected outcome: E[y] = P(respond) * E y respond
-#' Primary inferential target for hurdle models (Bürkner 2017, Woody et al. 2021)
+#' Primary inferential target for hurdle models (Buerkner 2017, Woody et al. 2021)
 #' @export
 os_marginal <- function() {
   outcome_spec(gq_var = "mu_marginal", label = "E[y] (marginal)")
@@ -117,7 +117,7 @@ print.outcome_spec_hurdle <- function(x, ...) {
 
 #' Create a contrast specification object
 #'
-#' @param contrast_var  character scalar — the variable whose levels are contrasted
+#' @param contrast_var  character scalar -- the variable whose levels are contrasted
 #' @param grouping_vars character vector of variables to group by
 #' @param contrast_levels for categorical: length-2 character vector c("hi","lo").
 #'   For continuous with quantiles: length-2 numeric vector of probabilities c(hi_q, lo_q).
@@ -227,7 +227,7 @@ get_label.contrast <- function(x) {
       if (x$absolute_thresholds) {
         hi_thresh <- x$contrast_levels[1]
         lo_thresh <- x$contrast_levels[2]
-        sprintf("(≤%g) - (>%g)", hi_thresh, lo_thresh)
+        sprintf("(\u2264%g) - (>%g)", hi_thresh, lo_thresh)
       } else {
         hi_q <- x$contrast_levels[1]
         lo_q <- x$contrast_levels[2]
@@ -732,7 +732,7 @@ print.inference <- function(x, ...) {
     if (!col_name %in% colnames(extra[[arr_name]]))
       stop(sprintf(".simulate_at: column '%s' not found in numeric_array '%s'.", col_name, arr_name))
 
-    # Modify a copy of the matrix — zero all columns, set target column to value
+    # Modify a copy of the matrix -- zero all columns, set target column to value
     arr_cf <- extra[[arr_name]]
     arr_cf[, ]         <- 0          # zero all ROIs
     arr_cf[, col_name] <- value      # set the single counterfactual ROI
@@ -742,7 +742,7 @@ print.inference <- function(x, ...) {
     new_data[[contrast_var]] <- value
 
   } else {
-    # >>> END NEW — original path for non-virtual contrast vars
+    # >>> END NEW -- original path for non-virtual contrast vars
     if (!is.null(contrast_var) && !is.null(value))
       new_data[[contrast_var]] <- value
   }
@@ -801,7 +801,7 @@ print.inference <- function(x, ...) {
   fnames <- intersect(vars, names(data))
   n_obs  <- nrow(data)
 
-  # Extract named GQ variable as draws_df (S draws × N cols + 3 metadata)
+  # Extract named GQ variable as draws_df (S draws x N cols + 3 metadata)
   draws_df <- posterior::subset_draws(model$draws, variable = gq_var) |>
     posterior::as_draws_df()
 
@@ -857,8 +857,8 @@ print.inference <- function(x, ...) {
 #' Build the long yrep tibble, using either the descriptive or counterfactual
 #' method.
 #'
-#' "descriptive"    — uses grouped_ppc() on observed draws (original path).
-#' "counterfactual" — runs generate_quantities() at each point of a
+#' "descriptive"    -- uses grouped_ppc() on observed draws (original path).
+#' "counterfactual" -- runs generate_quantities() at each point of a
 #'                    contrast_var grid; returns a tibble with an extra
 #'                    column `contrast_var_value` identifying the grid point.
 #'                    The baseline (min of contrast_var) is included as
@@ -1257,7 +1257,7 @@ print.inference <- function(x, ...) {
 #' @param model        a fitted `stanmodel` object
 #' @param contrasts    a single `contrast` object or a list of `contrast` objects
 #' @param data         data frame used for fitting; if `NULL` uses `model$data` (default NULL)
-#' @param summary_fn   function to aggregate y within each draw × condition cell (default `mean`)
+#' @param summary_fn   function to aggregate y within each draw x condition cell (default `mean`)
 #' @param prob         HPDI width for credible intervals (default 0.95)
 #' @param plot         logical; if TRUE, render diagnostic plots (default FALSE)
 #' @param draws_method "descriptive" (default) uses observed draws grouped by features.
@@ -1266,7 +1266,7 @@ print.inference <- function(x, ...) {
 #' @param gq_steps     integer; grid resolution for counterfactual sweeps (default 5,
 #'   ignored for descriptive method)
 #' @param gq_n_draws   optional integer; if set, subsample this many posterior draws
-#'   before each `generate_quantities()` call in the counterfactual path — trades
+#'   before each `generate_quantities()` call in the counterfactual path -- trades
 #'   Monte Carlo precision for speed and output size. Default `NULL` uses all draws
 #'   (unchanged behavior). Ignored for `draws_method = "descriptive"`, which never
 #'   calls `generate_quantities()`.
@@ -1343,7 +1343,7 @@ infer_contrasts <- function(model,
     numeric_arrays <- stats::setNames(
       vector("list", length(numeric_arrays)),
       numeric_arrays
-    )  # list(roi = NULL, smatt = NULL) — NULL means all columns
+    )  # list(roi = NULL, smatt = NULL) -- NULL means all columns
   }
 
   if (is.null(model$numeric_arrays))     model$numeric_arrays     <- list()
@@ -1455,7 +1455,7 @@ infer_contrasts <- function(model,
   # >>> CHANGED: group by (gq_var, contrast_var) instead of gq_var alone.
   # This ensures:
   #   - hurdle margins (same contrast_var, different gq_var) still group
-  #     separately by gq_var as before — no regression.
+  #     separately by gq_var as before -- no regression.
   #   - numeric_array-expanded contrasts (same gq_var = "y_rep", different
   #     contrast_var per ROI) each get their OWN .get_yrep_draws() call.
   #   - genuinely unrelated contrasts with different contrast_var also work.
@@ -1944,7 +1944,7 @@ infer_contrasts <- function(model,
     ggplot2::scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
     ggplot2::labs(
       title    = get_label(res$contrast),
-      subtitle = sprintf("'%s' contrast: %s — %s",
+      subtitle = sprintf("'%s' contrast: %s \u2014 %s",
                          res$contrast$contrast_var, res$lv1, res$lv2),
       x = "Scenario",
       y = "Posterior probability"
@@ -2217,7 +2217,7 @@ infer_contrasts <- function(model,
     ggplot2::scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
     ggplot2::labs(
       title    = get_label(res$contrast),
-      subtitle = sprintf("'%s' contrast: %s — %s",
+      subtitle = sprintf("'%s' contrast: %s \u2014 %s",
                          res$contrast$contrast_var,
                          res$lv1, res$lv2),
       x = "Scenario",
