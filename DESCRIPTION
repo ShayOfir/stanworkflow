@@ -34,7 +34,8 @@ Imports:
     stats,
     stringr,
     tibble,
-    tidyr
+    tidyr,
+    utils
 Suggests: 
     testthat (>= 3.0.0)
 Additional_repositories: https://stan-dev.r-universe.dev
