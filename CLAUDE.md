@@ -226,3 +226,10 @@ graded plan for the modelling work that follows.
 - `dev/results_3.9.26/` — current results, including
   `MVNorm_and_mass_univariate_results.xlsx` (sheets `multiv`, `mass_univ`).
 - `dev/simulate.R` — simulation helpers, the starting point for any design/power or SBC work.
+
+## Dev note: Windows Defender and CmdStan
+
+Defender can block a freshly compiled `model_code.exe` ("system error 225, file contains a virus")
+in `tempdir()`; the chain then fails to start. `fit()`/`gq()` now stop on a failed chain instead
+of using partial draws. Workaround: add a Defender exclusion for the CmdStan folder and R's
+temp dir (`%TEMP%`), then re-run.

@@ -491,3 +491,7 @@ test_that("gq() with cache_compiled = FALSE reproduces original per-call recompi
 
   expect_equal(posterior::ndraws(out), posterior::ndraws(m$fitted_model$draws()))
 })
+test_that(".check_chains() fails loudly on a failed chain", {
+  expect_error(stanworkflow:::.check_chains(list(return_codes = function() c(0L, 1L))), "chain\(s\) 2")
+  expect_silent(stanworkflow:::.check_chains(list(return_codes = function() c(0L, 0L))))
+})

@@ -1,5 +1,12 @@
 # stanworkflow 0.0.0.9000 (development version)
 
+## Bug fixes
+
+* `fit()` and `gq()` now stop if any CmdStan chain returns a non-zero code.
+  Previously cmdstanr only warned and the draws of the surviving chains were
+  used silently (e.g. 200 instead of 400 draws when one chain's process failed
+  to launch).
+
 ## New features
 
 * `draws_method = "parameter"` in `infer_contrasts()`, `regimen()` and

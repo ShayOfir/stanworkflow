@@ -352,6 +352,8 @@ fit.stanmodel <- function(x,
     c(list(data = stan_data), sampler_params, list(...))
   )
 
+  .check_chains(x$fitted_model)
+
   x$data <- data
   x$cond_df <- cond_df
   x$extra <- extra
@@ -366,6 +368,17 @@ fit.stanmodel <- function(x,
   return(x)
 }
 
+
+# cmdstanr only warns when a chain dies (crash, exe blocked by antivirus) and
+# draws() then silently returns the surviving chains; fail loudly instead.
+.check_chains <- function(fit) {
+  rc <- fit$return_codes()
+  if (any(rc != 0L))
+    stop("CmdStan chain(s) ", paste(which(rc != 0L), collapse = ", "),
+         " failed (return code ", paste(rc[rc != 0L], collapse = ", "),
+         "); refusing to continue with a partial set of draws.", call. = FALSE)
+  invisible(fit)
+}
 
 #' gq - method for using generate_quantities() method in stanmodel
 #'
@@ -428,6 +441,7 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
   }
 
   fit_gq <- mod_gqp$generate_quantities(mod_fit, data = new_data, parallel_chains = pc, output_dir = output_dir)
+  .check_chains(fit_gq)
   out <- fit_gq$draws()
   rm(fit_gq)
   if (own_dir) unlink(output_dir, recursive = TRUE)
