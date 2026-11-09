@@ -32,7 +32,8 @@ make_mock_draws <- function(n = 10) {
 }
 
 make_compiled_mock <- function(n = 10) {
-  fitted_mock <- list(draws = function(...) make_mock_draws(n))
+  fitted_mock <- list(draws = function(...) make_mock_draws(n),
+                      return_codes = function() 0L)
   list(sample = function(...) fitted_mock)
 }
 
@@ -491,7 +492,8 @@ test_that("gq() with cache_compiled = FALSE reproduces original per-call recompi
 
   expect_equal(posterior::ndraws(out), posterior::ndraws(m$fitted_model$draws()))
 })
+
 test_that(".check_chains() fails loudly on a failed chain", {
-  expect_error(stanworkflow:::.check_chains(list(return_codes = function() c(0L, 1L))), "chain\(s\) 2")
+  expect_error(stanworkflow:::.check_chains(list(return_codes = function() c(0L, 1L))), "chain(s) 2", fixed = TRUE)
   expect_silent(stanworkflow:::.check_chains(list(return_codes = function() c(0L, 0L))))
 })
