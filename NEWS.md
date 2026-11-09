@@ -21,6 +21,17 @@
   `y_rep`, `mu_rep` and other digit-free names are unaffected.
 * `fit.stanmodel()` now uses its documented `stan_data` argument; it was
   silently ignored and the data always rebuilt from `data`.
+* Descriptive contrasts on a continuous variable (`continuous = TRUE`, one-way
+  or two-way) split the data at the wrong cut. With the default
+  `contrast_levels = c(0.75, 0.25)` "hi" was every value at or above the 25th
+  percentile and "lo" the values below it, not the top quartile vs the bottom
+  quartile; absolute thresholds given as `c(hi, lo)` were swapped the same
+  way. "hi" is now values at or above the larger cut and "lo" values below the
+  smaller cut, in whichever order the two levels are given. Calls that passed
+  the lower level first (e.g. `c(0.25, 0.75)`) give the same numbers as
+  before. Counterfactual contrasts never used this split and are unchanged.
+  `get_label()` / `print()` of a categorical contrast now show the levels in
+  the order of the computed difference (second minus first).
 
 ## Behaviour changes
 

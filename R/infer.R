@@ -119,9 +119,12 @@ print.outcome_spec_hurdle <- function(x, ...) {
 #'
 #' @param contrast_var  character scalar -- the variable whose levels are contrasted
 #' @param grouping_vars character vector of variables to group by
-#' @param contrast_levels for categorical: length-2 character vector c("hi","lo").
-#'   For continuous with quantiles: length-2 numeric vector of probabilities c(hi_q, lo_q).
-#'   For continuous with absolute thresholds: length-2 numeric vector c(hi_threshold, lo_threshold).
+#' @param contrast_levels for categorical: length-2 character vector
+#'   c(reference, index); the contrast is `index - reference` (second minus first).
+#'   For continuous with quantiles: length-2 numeric vector of probabilities, e.g. c(0.75, 0.25).
+#'   For continuous with absolute thresholds: length-2 numeric vector of cut-offs.
+#'   In both continuous cases the order does not matter: "hi" is values at or above
+#'   the larger cut, "lo" values below the smaller cut, and the contrast is hi - lo.
 #'   Default NULL uses first two factor levels (categorical) or c(0.75, 0.25) (continuous).
 #' @param effect_positive logical; if TRUE, higher values of contrast_var are considered an effect in the "correct direction". Default TRUE.
 #' @param continuous logical; if TRUE treat contrast_var as continuous. Default FALSE.
@@ -226,16 +229,14 @@ get_label.contrast <- function(x) {
   } else {
     if (x$continuous) {
       if (x$absolute_thresholds) {
-        hi_thresh <- x$contrast_levels[1]
-        lo_thresh <- x$contrast_levels[2]
-        sprintf("(\u2264%g) - (>%g)", hi_thresh, lo_thresh)
+        sprintf("(>=%g) - (<%g)", max(x$contrast_levels), min(x$contrast_levels))
       } else {
         hi_q <- x$contrast_levels[1]
         lo_q <- x$contrast_levels[2]
         sprintf("%d%% - %d%%", round(hi_q * 100), round(lo_q * 100))
       }
     } else {
-      sprintf("%s - %s", x$contrast_levels[1], x$contrast_levels[2])
+      sprintf("%s - %s", x$contrast_levels[2], x$contrast_levels[1])
     }
   }
 }
@@ -259,8 +260,8 @@ print.contrast <- function(x, ...) {
       if (x$absolute_thresholds) {
         thresholds <- if (!is.null(x$contrast_levels)) x$contrast_levels else c(NA, NA)
         cat("  type           : continuous (absolute thresholds)\n")
-        cat("  hi threshold   : <=", thresholds[1], "\n")
-        cat("  lo threshold   :  >", thresholds[2], "\n")
+        cat("  hi threshold   : >=", max(thresholds), "\n")
+        cat("  lo threshold   :  <", min(thresholds), "\n")
       } else {
         probs <- if (!is.null(x$contrast_levels)) x$contrast_levels else c(0.75, 0.25)
         cat("  type           : continuous (quantile split)\n")
@@ -269,7 +270,7 @@ print.contrast <- function(x, ...) {
       }
     } else {
       lev <- if (!is.null(x$contrast_levels))
-               paste(x$contrast_levels, collapse = " - ")
+               paste(rev(x$contrast_levels), collapse = " - ")
              else
                "<auto: first two levels>"
       cat("  type           : categorical\n")
@@ -1120,7 +1121,7 @@ print.inference <- function(x, ...) {
       dplyr::all_of(feat_cols),
       y, contrast_var_value, baseline_var_value
     )
-} 
+}
 
  
 # # ---- internal: one contrast -------------------------------------------------
@@ -1159,13 +1160,15 @@ print.inference <- function(x, ...) {
     if (co$absolute_thresholds) {
       if (is.null(co$contrast_levels))
         stop("contrast_levels must be specified when absolute_thresholds = TRUE.")
-      hi_threshold <- co$contrast_levels[2]   # values <= this are "hi"
-      lo_threshold <- co$contrast_levels[1]   # values >  this are "lo"
+      cuts <- co$contrast_levels
     } else {
-      probs        <- if (!is.null(co$contrast_levels)) co$contrast_levels else c(0.75, 0.25)
-      hi_threshold <- quantile(yrep[[co$contrast_var]], probs[2], na.rm = TRUE)
-      lo_threshold <- quantile(yrep[[co$contrast_var]], probs[1], na.rm = TRUE)
+      probs <- if (!is.null(co$contrast_levels)) co$contrast_levels else c(0.75, 0.25)
+      cuts  <- quantile(yrep[[co$contrast_var]], probs, na.rm = TRUE)
     }
+    # "hi" = at or above the upper cut, "lo" = below the lower cut, whatever
+    # order the two levels were given in.
+    hi_threshold <- max(cuts)
+    lo_threshold <- min(cuts)
 
     yrep_filtered <- yrep |>
       dplyr::mutate(
@@ -2013,43 +2016,11 @@ infer_contrasts <- function(model,
       stop("filter_draws removed all rows from the draws data frame. Check your filter expression.")
   }
 
-  if (co$continuous) {
-    hi_lbl <- "hi"
-    lo_lbl <- "lo"
-
-    if (co$absolute_thresholds) {
-      if (is.null(co$contrast_levels))
-        stop("contrast_levels must be specified when absolute_thresholds = TRUE.")
-      hi_threshold <- co$contrast_levels[2]
-      lo_threshold <- co$contrast_levels[1]
-    } else {
-      probs        <- if (!is.null(co$contrast_levels)) co$contrast_levels else c(0.75, 0.25)
-      hi_threshold <- quantile(yrep[[co$contrast_var]], probs[2], na.rm = TRUE)
-      lo_threshold <- quantile(yrep[[co$contrast_var]], probs[1], na.rm = TRUE)
-    }
-
-    yrep_filtered <- yrep |>
-      dplyr::mutate(
-        .contrast_group = dplyr::case_when(
-          .data[[co$contrast_var]] >= hi_threshold ~ "hi",
-          .data[[co$contrast_var]] <  lo_threshold ~ "lo",
-          TRUE ~ NA_character_
-        )
-      ) |>
-      dplyr::filter(!is.na(.contrast_group))
-
-    contrast_var_sym <- ".contrast_group"
-
-  } else {
-    lvls   <- .resolve_contrast_levels(co, yrep)
-    hi_lbl <- lvls[2]
-    lo_lbl <- lvls[1]
-
-    yrep_filtered    <- yrep |>
-      dplyr::filter(.data[[co$contrast_var]] %in% lvls)
-
-    contrast_var_sym <- co$contrast_var
-  }
+  split            <- .apply_contrast_split(co, yrep)
+  yrep_filtered    <- split$yrep_filtered
+  contrast_var_sym <- split$contrast_var_sym
+  hi_lbl           <- split$hi_lbl
+  lo_lbl           <- split$lo_lbl
 
   # CHANGED: guard .by when cell_vars is NULL
   by_draw_vars <- c(".draw", ".iteration", ".chain",

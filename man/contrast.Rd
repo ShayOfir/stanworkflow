@@ -22,9 +22,12 @@ contrast(
 
 \item{grouping_vars}{character vector of variables to group by}
 
-\item{contrast_levels}{for categorical: length-2 character vector c("hi","lo").
-For continuous with quantiles: length-2 numeric vector of probabilities c(hi_q, lo_q).
-For continuous with absolute thresholds: length-2 numeric vector c(hi_threshold, lo_threshold).
+\item{contrast_levels}{for categorical: length-2 character vector
+c(reference, index); the contrast is \code{index - reference} (second minus first).
+For continuous with quantiles: length-2 numeric vector of probabilities, e.g. c(0.75, 0.25).
+For continuous with absolute thresholds: length-2 numeric vector of cut-offs.
+In both continuous cases the order does not matter: "hi" is values at or above
+the larger cut, "lo" values below the smaller cut, and the contrast is hi - lo.
 Default NULL uses first two factor levels (categorical) or c(0.75, 0.25) (continuous).}
 
 \item{effect_positive}{logical; if TRUE, higher values of contrast_var are considered an effect in the "correct direction". Default TRUE.}
