@@ -17,12 +17,14 @@ usually driven by a gap hit while running an analysis.
 
 ## Environment and commands
 
-Windows + `renv` + Rtools45. `.Rprofile` activates renv **and hard-codes the gcc/g++ paths**
-that `cmdstanr` needs (`C:/rtools45/x86_64-w64-mingw32.static.posix/bin/`) — Stan compilation
-fails without it, so always start R from the project root so `.Rprofile` runs.
+Windows + Rtools45. The package repo has no renv and no `.Rprofile` (removed 2026-11);
+DESCRIPTION is the dependency spec. If Stan compilation cannot find gcc/g++, set `CC`/`CXX`
+in your user `~/.Rprofile` / `~/.Renviron` or run `cmdstanr::check_cmdstan_toolchain(fix = TRUE)`.
+Development happens in the `stanworkflow-dev` worktree (branch `main`); the original
+`stanworkflow` folder is the frozen finger-paper checkout (branch `claude/analysis-fixes`, tag
+`finger-paper-2026-10`) and holds `dev/` (~149 GB) — never run `R CMD build/check` there.
 
 ```r
-renv::restore()                 # sync library from renv.lock
 devtools::load_all(".")         # load package for interactive work
 devtools::document()            # regenerate NAMESPACE + man/ (roxygen2; never hand-edit either)
 devtools::check()
@@ -40,10 +42,10 @@ devtools::test()                                  # whole suite
 testthat::test_file("tests/testthat/test-stanmodels.R")
 ```
 
-Note: `tests/testthat/test-stanmodels.R` is **entirely commented out** — there is effectively
-no active test coverage. Treat any claim that "tests pass" as meaningless until real tests
-exist. Model correctness is currently checked by prior/posterior predictive checks and
-diagnostics inside the pipeline, not by unit tests.
+Tests: `test-stanmodels.R` (stanmodel, priors, sampler_params, data-block parser,
+`get_stan_data`, `fit`, `gq`) and `test-counterfactual.R` (draw pairing with `gq_n_draws`,
+linear identity, y_rep warning). Most need CmdStan and skip without it. Nothing yet for
+`regimen`, `wflow`, `loo_cv` or descriptive `infer_contrasts`.
 
 ## Package architecture
 
@@ -149,14 +151,13 @@ counterfactual value **and zeroes all the others**.
 ### Serialization
 
 `write.wflow()` / `load_wflow()` / `save_regimen()` / `load_regimen()` go through
-`JWileymisc::saveRDSfst()` (ZSTD, level 100), with a `readRDS()` fallback on load. Fitted
+internal `fst` helpers `.save_rds_fst()` / `.read_rds_fst()` (`R/wflow.R`; ZSTD, level 100,
+byte-identical to the former `JWileymisc::saveRDSfst()`); plain RDS files also load.
+`save_regimen()` and the inference checkpoint use plain `saveRDS()`. Fitted
 objects are large — a single `m2` posterior is ~140 MB, an `m3` counterfactual inference object
 several hundred MB. When you only need a few parameters, `posterior::subset_draws()` the
 variable you want and `rm()` + `gc()` the wflow rather than holding several in memory.
 
-`DESCRIPTION` is out of sync with the code: `JWileymisc`, `loo`, `scales`, `patchwork`,
-`stats`, and `tibble` are all called with `::` but not declared in `Imports`. `DESCRIPTION`
-itself is still `usethis` boilerplate (title, description, author, license unset).
 
 ## Known pitfalls
 
@@ -169,20 +170,21 @@ invariant to `a`. Reading `beta_lesion` / `beta_roi_3d` from the draws is exact,
 orders of magnitude cheaper than the `gq()` sweep. `dev/Opus_Tier_0_ver_12.9.26.R` implements
 that route. Counterfactual sweeps only earn their cost for non-linear models or non-identity
 links. A `draws_method = "parameter"` option in `infer_contrasts()` is the obvious missing
-package feature.
+package feature (planned).
 
-**Never pass `gq_n_draws` to a counterfactual contrast.** `gq.stanmodel()` (`R/stanmodels.R:405`)
-does `sample.int(n_available, n_draws)` and `posterior` renumbers `.draw` to `1..n`, so a fresh
-unrelated subsample is taken at every grid point. `.compute_counterfactual_contrast()` then
-joins baseline to grid point on `.draw`, silently pairing *different* posterior draws — the
-intercepts and random effects stop cancelling. `dev/results_3.9.26/scenarios_probs_m3.csv` was
-produced this way and is not trustworthy.
+**`gq_n_draws` in counterfactual contrasts (fixed on main, 2026-11).** Before the fix,
+`gq.stanmodel()` took a fresh `sample.int()` subsample at every grid point and baseline and grid
+point were joined on renumbered `.draw`, pairing *different* posterior draws.
+`.get_yrep_draws()` now samples once and passes `draw_ids` to `gq()`. Results made with
+`gq_n_draws` on older versions (e.g. `dev/results_3.9.26/scenarios_probs_m3.csv`) are not
+trustworthy.
 
 **Counterfactual contrasts difference `y_rep`, not the linear predictor.** Since `y_rep` is
 `normal_rng(mu, sigma)`, every grid point injects fresh residual noise whose SD is constant in
 the counterfactual level while the signal grows with it. Sign-based probabilities are therefore
 biased toward 0.25, and the same contrast evaluated at 50% vs. 100% lesion gives different
-answers when it mathematically should not.
+answers when it mathematically should not. `infer_contrasts()` now warns in this case; use an
+expectation GQ (`mu_rep`) via `outcome_spec(gq_var = "mu_rep")`.
 
 **`load_kinematics()` ignores its `scale_to_intact` argument** (`dev/helper_functions.R:17`) —
 `y` is always divided by the intact-group 95th percentile per finger × direction × hand,
