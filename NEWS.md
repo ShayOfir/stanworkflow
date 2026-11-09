@@ -9,6 +9,11 @@
   `gq(draw_ids = )` argument). Counterfactual results computed with
   `gq_n_draws` before this fix are not trustworthy; results without
   `gq_n_draws` are unchanged.
+* One-way continuous counterfactual contrasts (`continuous = TRUE`, no
+  `two_way`) reported the GQ *level* at each grid point instead of its
+  difference from the baseline, including a baseline-vs-itself row.
+  `grid_summary` / `grid_posterior` now hold grid point minus baseline and
+  omit the baseline row. Two-way and categorical contrasts are unchanged.
 * The observation index of a generated quantity was taken from the first
   digits in its name, so variables with a digit in the name (e.g. `mu0_rep`,
   `y2_rep`) got index 0 for every observation and observations were mixed

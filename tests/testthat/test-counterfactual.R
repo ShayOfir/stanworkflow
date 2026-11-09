@@ -63,6 +63,15 @@ test_that("counterfactual contrasts pair the same draws when gq_n_draws is set",
                 abs(sd1$contrast_B - b[["b[2]"]][sd1$.draw] * dx)), 1e-4)
 
   expect_warning(cf_run(m, "y_rep", gq_n_draws = 10), "mu_rep")
+
+  # one-way continuous: grid points are differenced against the baseline
+  co1 <- contrast(contrast_var = "x", continuous = TRUE, grouping_vars = "direction",
+                  outcome = outcome_spec(gq_var = "mu_rep"))
+  suppressMessages(capture.output(
+    r1 <- infer_contrasts(m, co1, draws_method = "counterfactual", gq_steps = 2)))
+  gp <- r1$grid_posterior |> dplyr::filter(direction == "A") |> dplyr::arrange(.draw)
+  expect_equal(nrow(gp), posterior::ndraws(m$draws))
+  expect_lt(max(abs(gp$contrast - b[["b[1]"]][gp$.draw] * dx)), 1e-4)
 })
 
 test_that("observation index is read from the brackets, not the variable name", {

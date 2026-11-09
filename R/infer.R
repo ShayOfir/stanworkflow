@@ -1837,8 +1837,17 @@ infer_contrasts <- function(model,
     # ---- continuous one-way: full grid summary ---------------------------
     # yrep has contrast_var_value (grid point) and y = GQ at that point.
     # baseline_var_value holds the minimum (grid point 1 value).
-    # y is already differenced: GQ(grid_pt) - GQ(baseline) from .get_yrep_draws.
-    # <<< NEW: summarise per draw × contrast_var_value × outer_vars
+    # .get_yrep_draws returns GQ levels on the continuous path, so difference
+    # each grid point against the baseline here (as the two-way branch does).
+    yrep_base <- yrep |>
+      dplyr::filter(contrast_var_value == baseline_var_value) |>
+      dplyr::select(.draw, .iteration, .chain, .obs_idx, y_baseline = y)
+
+    yrep <- yrep |>
+      dplyr::filter(contrast_var_value != baseline_var_value) |>
+      dplyr::left_join(yrep_base, by = c(".draw", ".iteration", ".chain", ".obs_idx")) |>
+      dplyr::mutate(y = y - y_baseline)
+
     draw_by <- c(".draw", ".iteration", ".chain",
                  "contrast_var_value", "baseline_var_value", outer_vars)
 
