@@ -176,7 +176,8 @@ get_stan_data <- function(x, ...) UseMethod("get_stan_data")
 get_stan_data.stanmodel <- function(x,
                                     df,
                                     extra   = list(),
-                                    cond_df = NULL) {
+                                    cond_df = NULL,
+                                    ...) {
   vars   <- .parse_stan_data_block(x$model_code)
   vnames <- names(vars)
   result <- vector("list", length(vnames))
@@ -395,7 +396,7 @@ gq <- function(x, ...) UseMethod("gq")
 .gq_model_cache <- new.env(parent = emptyenv())
 
 #' @exportS3Method
-gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_compiled = TRUE, draw_ids = NULL){
+gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_compiled = TRUE, draw_ids = NULL, ...){
   mod_gqp <- if (cache_compiled) .gq_model_cache[[x$model_code]] else NULL
   if (is.null(mod_gqp)) {
     gqp <- cmdstanr::write_stan_file(x$model_code)
@@ -1058,7 +1059,8 @@ grouped_ppc.stanmodel <- function(x,
                                   data,
                                   feature_names,
                                   enforce_features = TRUE,
-                                  preserve_.draws = FALSE) {
+                                  preserve_.draws = FALSE,
+                                  ...) {
 
   fnames <- feature_names
   df <- data
@@ -1318,7 +1320,7 @@ diagnose <- function(x, ...) UseMethod("diagnose")
 
 
 #' @exportS3Method
-diagnose.stanmodel <- function(x, params = NULL, plot = FALSE) {
+diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
   if (!inherits(x, "stanmodel")) {
     stop("`x` must be a stanmodel object.")
   }
@@ -1455,7 +1457,7 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE) {
 ppc_by_parameter <- function(x, ...) UseMethod("ppc_by_parameter")
 
 #' @exportS3Method
-ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NULL) {
+ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NULL, ...) {
   
   # check if draws is present
   if (is.null(x$draws)) {
@@ -1607,7 +1609,8 @@ ppc_scenarios.stanmodel <- function(x,
                                     plot           = FALSE,
                                     facet_formula  = NULL,
                                     multiple_plots = NULL,
-                                    title          = NULL) {
+                                    title          = NULL,
+                                    ...) {
 
   stopifnot(
     is.character(parameter), length(parameter) == 1L,

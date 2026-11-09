@@ -124,7 +124,8 @@ attach_data.wflow <- function(wf,
                                data,
                                extra       = list(),
                                cond_df     = NULL,
-                               outcome_var = "y") {
+                               outcome_var = "y",
+                               ...) {
   wf$data <- list(
     data        = data,
     extra       = extra,
@@ -281,7 +282,7 @@ fit_posterior.wflow <- function(wf, sampler_params_list = NULL, ...) {
 run_diagnostics <- function(wf, ...) UseMethod("run_diagnostics")
 
 #' @exportS3Method
-run_diagnostics.wflow <- function(wf, params = NULL, plot = FALSE) {
+run_diagnostics.wflow <- function(wf, params = NULL, plot = FALSE, ...) {
   .check_post_fit(wf)
   
   params_use <- params %||% wf$diagnostics_params

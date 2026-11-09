@@ -235,7 +235,8 @@ loo_cv <- function(x, ...) UseMethod("loo_cv")
 loo_cv.stanmodel <- function(x,
                               moment_matching = FALSE,
                               plot            = FALSE,
-                              r_eff           = TRUE) {
+                              r_eff           = TRUE,
+                              ...) {
 
   if (is.null(x$draws))        stop("No draws found. Run `fit()` first.")
   if (is.null(x$fitted_model)) stop("No fitted_model found. Run `fit()` first.")

@@ -241,7 +241,8 @@ tune <- function(x, ...) UseMethod("tune")
 
 #' @rdname tune
 #' @export
-tune.regimen <- function(x, save = TRUE, ...) {
+tune.regimen <- function(wf, save = TRUE, ...) {
+  x <- wf
   .check_prepared_regimen(x)
 
   x$wf <- x$wf |>
@@ -532,10 +533,11 @@ run <- function(x, ...) UseMethod("run")
 
 #' @rdname run
 #' @export
-run.regimen <- function(x,
+run.regimen <- function(wf,
                         steps = c("prepare", "tune", "fit", "quick_fit", "infer"),
                         save  = TRUE,
                         ...) {
+  x <- wf
   
 
   valid_steps <- c("prepare", "tune", "fit", "quick_fit", "infer")
