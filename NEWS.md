@@ -37,6 +37,11 @@
   draws of all of them: the `contrast_name` column used to pick each
   contrast's rows was dropped before the filter. Each result now holds only
   its own contrast. A single categorical contrast per call was unaffected.
+* `print()` of an `inference` object failed for descriptive results (they
+  carried no `$contrast`, so the plot code indexed an `NA` column) and for any
+  one-way result without `grouping_vars`; categorical counterfactual results
+  were labelled "descriptive". Descriptive results now carry `$contrast`
+  (added, nothing removed) and print with their plot. Numbers are unchanged.
 
 ## Behaviour changes
 

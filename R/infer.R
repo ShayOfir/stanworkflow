@@ -339,6 +339,7 @@ print.contrast <- function(x, ...) {
 #' @return object of class "inference"
 #' @keywords internal
 as_inference <- function(result, contrast) {
+  if (is.null(result$contrast)) result$contrast <- contrast   # descriptive results lack it
   structure(
     result,
     class = c("inference", class(result))
@@ -366,8 +367,8 @@ print.inference <- function(x, ...) {
     
     # Print scenario probabilities
     cat("Scenario Probabilities:\n")
-    print(x$scenario_grid)
-    
+    print(x$scenario_grid %||% x$scenario_probs)   # counterfactual / descriptive
+
     # Generate and display 2-way plot
     cat("\nGenerating 2-way scenario plot...\n")
     p <- .plot_inference_2way(x)
@@ -389,7 +390,7 @@ print.inference <- function(x, ...) {
   } else {
     # 1-way descriptive or categorical counterfactual
     cat("  Method: ", 
-        if (!is.null(x$grid_posterior)) "counterfactual (categorical)" 
+        if ("contrast_var_value" %in% names(x$posterior)) "counterfactual (categorical)" 
         else "descriptive", "\n\n")
     
     if (!is.null(x$summary)) {
@@ -435,7 +436,7 @@ print.inference <- function(x, ...) {
   
   p <- ggplot2::ggplot(
     posterior_data,
-    ggplot2::aes(x = contrast, fill = .data[[grouping_vars[1] %||% "contrast"]])
+    ggplot2::aes(x = contrast, fill = .data[[c(grouping_vars, "contrast_label")[1]]])
   ) +
     ggplot2::geom_density(alpha = 0.5) +
     ggplot2::geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
@@ -446,7 +447,7 @@ print.inference <- function(x, ...) {
                       x$contrast$contrast_levels[1] %||% "lo"),
       x = "Contrast",
       y = "Density",
-      fill = grouping_vars[1] %||% ""
+      fill = c(grouping_vars, "")[1]
     ) +
     ggplot2::theme(legend.position = "bottom")
   
@@ -521,15 +522,16 @@ print.inference <- function(x, ...) {
   col2 <- paste0("contrast_", lv2)
   
   # Determine faceting based on outer_vars and grid coverage
-  facet_formula <- if (length(outer_vars) == 0 && length(unique(x$scenario_draws$contrast_var_value)) == 1) {
+  n_grid <- max(1L, length(unique(x$scenario_draws[["contrast_var_value"]])))   # descriptive: no grid
+  facet_formula <- if (length(outer_vars) == 0 && n_grid == 1) {
     NULL
-  } else if (length(outer_vars) == 1 && length(unique(x$scenario_draws$contrast_var_value)) == 1) {
+  } else if (length(outer_vars) == 1 && n_grid == 1) {
     stats::as.formula(paste(" ~", outer_vars[1]))
-  } else if (length(outer_vars) == 2 && length(unique(x$scenario_draws$contrast_var_value)) == 1) {
+  } else if (length(outer_vars) == 2 && n_grid == 1) {
     stats::as.formula(paste(outer_vars[2], "~", outer_vars[1]))
-  } else if (length(outer_vars) == 1 && length(unique(x$scenario_draws$contrast_var_value)) > 1) {
+  } else if (length(outer_vars) == 1 && n_grid > 1) {
     stats::as.formula(paste("contrast_var_value ~", outer_vars[1]))
-  } else if (length(outer_vars) == 2 && length(unique(x$scenario_draws$contrast_var_value)) > 1) {
+  } else if (length(outer_vars) == 2 && n_grid > 1) {
     stats::as.formula(paste("contrast_var_value ~", outer_vars[1], "+", outer_vars[2]))
   } else {
     NULL
