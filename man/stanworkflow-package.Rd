@@ -17,7 +17,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Shay Ofir-Geva \email{shinofir@gmail.com}
+\strong{Maintainer}: Shay Ofir-Geva \email{shinofir@gmail.com} (\href{https://orcid.org/0000-0001-7871-2778}{ORCID})
 
 }
 \keyword{internal}
