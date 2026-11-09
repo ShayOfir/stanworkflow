@@ -50,6 +50,7 @@ them draw by draw. `test-counterfactual.R` (pairing with `gq_n_draws`, identity,
 warning, categorical, the finger-paper two-way pattern), `test-infer.R` (descriptive
 contrasts recomputed by hand, HPDI, `outcome_spec`/`os_hurdle` on fake draws),
 `test-regimen.R` (lifecycle, checkpoints, `resume`, `quick_fit`, save/load),
+`test-parameter.R` (parameter route, `ppc_by_parameter`/`ppc_scenarios` and aliases),
 `test-wflow.R` (wflow steps, write/load incl. the JWileymisc-format fixture in
 `fixtures/`, ppc/diagnose), `test-loo.R`, `test-stanmodels.R`. CmdStan tests call
 `skip_if_no_cmdstan()`. Do not compile further models in tests; extend the helper model.
@@ -137,13 +138,15 @@ anything here.** The two orthogonal abstractions:
   `absolute_thresholds = TRUE`), `effect_positive` (sign convention), `filter_draws` (an
   unevaluated quosure, applied after extraction), and `two_way` + `two_way_levels`.
 
-`draws_method` selects between two fundamentally different routes:
+`draws_method` selects between fundamentally different routes:
 
 - `"descriptive"` — reuse the stored `y_rep` draws. Cheap.
 - `"counterfactual"` — call `.simulate_at()` → `gq()` once per grid point (`gq_steps` points
   across the observed range of `contrast_var`), then difference each point against the
   baseline. Very expensive in both time and disk: it re-runs `generate_quantities` per grid
   point and the resulting objects run to hundreds of megabytes per ROI.
+- `"parameter"` — summarise a parameter's draws per factor cell (optionally × `delta`), level
+  differences, two-way scenarios. No `gq()`; exact for linear, identity-link models.
 
 A `two_way` contrast classifies **each posterior draw** into `"Affects both"` /
 `"Affects <lv1> only"` / `"Affects <lv2> only"` / `"Affects neither"` (`.define_scenarios()`),
@@ -174,10 +177,11 @@ These cost real debugging time and are not visible from any single file.
 contrast variable.** For `m2`/`m3`, `E[y | lesion = a] − E[y | lesion = 0] = −β·a` exactly, so
 the sign-based scenario probabilities *are* the joint sign probabilities of `β` and are
 invariant to `a`. Reading `beta_lesion` / `beta_roi_3d` from the draws is exact, and three
-orders of magnitude cheaper than the `gq()` sweep. `dev/Opus_Tier_0_ver_12.9.26.R` implements
-that route. Counterfactual sweeps only earn their cost for non-linear models or non-identity
-links. A `draws_method = "parameter"` option in `infer_contrasts()` is the obvious missing
-package feature (planned).
+orders of magnitude cheaper than the `gq()` sweep. `draws_method = "parameter"`
+(`.compute_parameter_contrast()` in `R/infer.R`; inputs `parameter`/`factors`/`delta` on the
+`contrast`) implements that route; `test-parameter.R` checks the identity against the
+counterfactual `mu_rep` contrast. Counterfactual sweeps only earn their cost for non-linear
+models or non-identity links.
 
 **`gq_n_draws` in counterfactual contrasts (fixed on main, 2026-11).** Before the fix,
 `gq.stanmodel()` took a fresh `sample.int()` subsample at every grid point and baseline and grid
