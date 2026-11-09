@@ -428,13 +428,13 @@ run.wflow <- function(wf,
   wf
 }
 
-# ---- Write/ Read (MODIFIED with saveRDSfst) --------------------------------
+# ---- Write/ Read (fst-compressed RDS) ---------------------------------------
 
 #' Write a wflow to disk using compressed serialization
 #'
-#' Saves a `wflow` object to disk using `JWileymisc::saveRDSfst()` for
-#' efficient compression. Significantly faster and more disk-efficient than
-#' standard `saveRDS()`.
+#' Saves a `wflow` object as an RDS file holding an `fst`-compressed
+#' serialization of the object (the format of `JWileymisc::saveRDSfst()`, so
+#' files written by earlier versions and by this version are interchangeable).
 #'
 #' @param x         a `wflow` object
 #' @param path      file path (`.rds` or `.fst`); extension does not affect
@@ -442,40 +442,24 @@ run.wflow <- function(wf,
 #' @param dir_create logical; if `TRUE` (default) and directory does not exist,
 #'   create it recursively
 #' @param compress  integer; compression level (0-100). Higher = more compression
-#'   but slower. Default `100` (maximum compression, recommended for wflow objects
-#'   with large fitted models)
-#' @param algorithm character; compression algorithm passed to `saveRDSfst()`.
-#'   Options: `"ZSTD"` (default, fast), `"LZ4"` (very fast, less compression),
-#'   `"ZSTD_SMALL"` (slow, smallest file)
-#' @param ... additional arguments passed to `JWileymisc::saveRDSfst()`
-#'   (e.g., `data_frame`, `version`, `old_format`)
+#'   but slower. Default `100`.
+#' @param algorithm character; `"ZSTD"` (default) or `"LZ4"` (faster, less
+#'   compression)
+#' @param ... ignored (kept for backward compatibility)
 #'
 #' @details
-#' Uses `JWileymisc::saveRDSfst()` instead of base `saveRDS()`:
-#' - **Speed**: ~3-10× faster write/read for large objects
-#' - **Disk**: ~30-50% smaller file sizes (especially for fitted Stan models)
-#' - **Compatibility**: RDS format preserved; loads with `load_wflow()`
-#'
-#' Typical compression settings:
-#' - `compress = 100, algorithm = "ZSTD"`: maximum compression, ~1-2s extra time
-#' - `compress = 50, algorithm = "ZSTD"`: balanced (recommended default)
-#' - `compress = 0, algorithm = "LZ4"`: fastest, still ~50% smaller than uncompressed
+#' The file is `saveRDS(fst::compress_fst(serialize(x, NULL)))`. If that
+#' fails, the object is saved with plain `saveRDS()` (with a warning);
+#' [load_wflow()] reads both.
 #'
 #' @return the `wflow` invisibly
 #'
-#' @seealso [load_wflow()], [JWileymisc::saveRDSfst()]
+#' @seealso [load_wflow()]
 #'
 #' @examples
 #' \dontrun{
 #' wf <- wflow(...) |> fit_posterior()
-#'
-#' # Write with default maximum compression
 #' wf |> write("./models/m1_posterior.rds")
-#'
-#' # Write with fast compression (smaller file)
-#' wf |> write("./models/m1_posterior.rds", compress = 50)
-#'
-#' # Write uncompressed (fastest)
 #' wf |> write("./models/m1_posterior.rds", compress = 0, algorithm = "LZ4")
 #' }
 #'
@@ -500,7 +484,6 @@ write.wflow <- function(x,
 
   dir_path <- dirname(path)
 
-  # ---- MODIFIED: Create directory if needed ------
   if (!dir.exists(dir_path)) {
     if (dir_create) {
       dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
@@ -513,16 +496,9 @@ write.wflow <- function(x,
     }
   }
 
-  # ---- MODIFIED: Use saveRDSfst with compression options ------
   tryCatch(
     {
-      JWileymisc::saveRDSfst(
-        x,
-        file      = path,
-        compress  = compress,
-        algorithm = algorithm,
-        ...
-      )
+      .save_rds_fst(x, path, compression = compress, algorithm = algorithm)
       message(sprintf(
         "wflow saved to: %s (compress=%d, algorithm=%s)",
         path, compress, algorithm
@@ -533,7 +509,6 @@ write.wflow <- function(x,
         "Failed to save wflow: %s\nTrying fallback with base::saveRDS()",
         e$message
       ))
-      # Fallback to base saveRDS if saveRDSfst fails
       saveRDS(x, path)
       message("Fallback: wflow saved using base::saveRDS() to: ", path)
     }
@@ -544,19 +519,12 @@ write.wflow <- function(x,
 
 #' Load a wflow from disk
 #'
-#' Deserializes a `wflow` object saved with [write.wflow()] using
-#' `JWileymisc::readRDSfst()`. Handles both compressed (fst format) and
-#' standard RDS files transparently.
+#' Reads a `wflow` saved with [write.wflow()]: either the `fst`-compressed
+#' format (also written by `JWileymisc::saveRDSfst()`) or a plain RDS file.
 #'
 #' @param path file path to the wflow (`.rds` or `.fst`); format auto-detected
 #'
 #' @return a `wflow` object
-#'
-#' @details
-#' Uses `JWileymisc::readRDSfst()` which:
-#' - Auto-detects compression format (fst or RDS)
-#' - ~3-10× faster than base `readRDS()` for compressed files
-#' - Falls back gracefully to base `readRDS()` for standard `.rds` files
 #'
 #' @seealso [write.wflow()]
 #'
@@ -573,19 +541,7 @@ load_wflow <- function(path) {
   if (!file.exists(path))
     stop(sprintf("File not found: '%s'", path))
 
-  # ---- MODIFIED: Try loadRDSfst first, fallback to readRDS ------
-  wf <- tryCatch(
-    {
-      JWileymisc::readRDSfst(path)
-    },
-    error = function(e) {
-      warning(sprintf(
-        "readRDSfst() failed (%s); attempting fallback with base::readRDS()",
-        e$message
-      ))
-      readRDS(path)
-    }
-  )
+  wf <- .read_rds_fst(path)
 
   stopifnot(
     inherits(wf, "wflow"),
@@ -595,6 +551,20 @@ load_wflow <- function(path) {
 
   message("wflow loaded from: ", path)
   wf
+}
+
+# Same bytes as JWileymisc::saveRDSfst() / readRDSfst().
+#' @keywords internal
+.save_rds_fst <- function(x, path, compression = 100, algorithm = "ZSTD") {
+  saveRDS(fst::compress_fst(serialize(x, NULL), compressor = algorithm,
+                            compression = compression, hash = TRUE),
+          file = path, version = 3)
+}
+
+#' @keywords internal
+.read_rds_fst <- function(path) {
+  x <- readRDS(path)
+  if (is.raw(x)) unserialize(fst::decompress_fst(x)) else x
 }
 
 # ---- helpers ----------------------------------------------------------------
