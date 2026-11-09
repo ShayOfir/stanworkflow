@@ -256,19 +256,8 @@ test_that("get_stan_data() messages on unfilled variables", {
 })
 
 test_that("get_stan_data() includes skip_likelihood as NA", {
-  code <- "
-  data {
-    int<lower=0> N;
-    vector[N] y;
-    real prior_mu;
-    int<lower=0, upper=1> skip_likelihood;
-  }
-  parameters { real mu; }
-  model { mu ~ normal(prior_mu, 1); y ~ normal(mu, 1); }
-  "
-  skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
-  m     <- stanmodel() |> compile_from_string(code)
-  sdata <- get_stan_data(m, df = data.frame(y = rnorm(10)))
+  skip_if_no_cmdstan()
+  sdata <- suppressMessages(get_stan_data(tm_compiled(), df = tm_data()))
 
   expect_true("skip_likelihood" %in% names(sdata))
   expect_true(is.na(sdata$skip_likelihood))
@@ -397,23 +386,11 @@ test_that("fit() warns when prior_predictive = TRUE but skip_likelihood absent",
 })
 
 test_that("fit() runs with skip_likelihood = 0L (CmdStan integration)", {
-  skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
-
-  code <- "
-  data {
-    int<lower=0> N;
-    vector[N] y;
-    real prior_mu;
-    int<lower=0, upper=1> skip_likelihood;
-  }
-  parameters { real mu; }
-  model { mu ~ normal(prior_mu, 1); if (!skip_likelihood) { y ~ normal(mu, 1); } }
-  "
-  df    <- data.frame(y = rnorm(10))
-  m     <- stanmodel() |> compile_from_string(code)
-  sdata <- get_stan_data(m, df = df)
+  skip_if_no_cmdstan()
+  m     <- tm_compiled()
+  df    <- tm_data()
+  sdata <- suppressMessages(get_stan_data(m, df = df))
   sdata$skip_likelihood <- 0L
-  m$priors$prior_mu     <- 0
 
   result <- fit(m, data = df, stan_data = sdata, sampler_params = fast_sampler)
   expect_false(is.null(result$fitted_model))
@@ -457,35 +434,10 @@ test_that("fit() populates draws and variables, excludes lp__", {
 
 # ---- gq (CmdStan integration) ------------------------------------------------
 
-.fit_gq_test_model <- function() {
-  code <- "
-  data {
-    int<lower=0> N;
-    vector[N] y;
-    real prior_mu;
-    int<lower=0, upper=1> skip_likelihood;
-  }
-  parameters { real mu; real<lower=0> sigma; }
-  model {
-    mu ~ normal(prior_mu, 1);
-    if (!skip_likelihood) y ~ normal(mu, sigma);
-  }
-  generated quantities {
-    vector[N] y_rep;
-    for (i in 1:N) y_rep[i] = normal_rng(mu, sigma);
-  }
-  "
-  df    <- data.frame(y = rnorm(10))
-  m     <- stanmodel() |> compile_from_string(code)
-  sdata <- get_stan_data(m, df = df)
-  sdata$skip_likelihood <- 0L
-  m$priors$prior_mu     <- 0
-
-  fit(m, data = df, stan_data = sdata, sampler_params = fast_sampler)
-}
+.fit_gq_test_model <- function() tm_fit()
 
 test_that("gq() with n_draws = NULL returns all available draws", {
-  skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
+  skip_if_no_cmdstan()
 
   m <- .fit_gq_test_model()
   n_available <- posterior::ndraws(m$fitted_model$draws())
@@ -496,7 +448,7 @@ test_that("gq() with n_draws = NULL returns all available draws", {
 })
 
 test_that("gq() with n_draws = k < available subsamples to exactly k draws", {
-  skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
+  skip_if_no_cmdstan()
 
   m <- .fit_gq_test_model()
 
@@ -506,7 +458,7 @@ test_that("gq() with n_draws = k < available subsamples to exactly k draws", {
 })
 
 test_that("gq() cleans up its own temp output_dir after the call", {
-  skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
+  skip_if_no_cmdstan()
 
   m <- .fit_gq_test_model()
 
@@ -518,7 +470,7 @@ test_that("gq() cleans up its own temp output_dir after the call", {
 })
 
 test_that("gq() with cache_compiled = TRUE returns correct draws across repeated calls", {
-  skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
+  skip_if_no_cmdstan()
 
   m <- .fit_gq_test_model()
 
@@ -531,7 +483,7 @@ test_that("gq() with cache_compiled = TRUE returns correct draws across repeated
 })
 
 test_that("gq() with cache_compiled = FALSE reproduces original per-call recompile behavior", {
-  skip_if_not(cmdstanr::cmdstan_version() > "0", "CmdStan not available")
+  skip_if_no_cmdstan()
 
   m <- .fit_gq_test_model()
 
