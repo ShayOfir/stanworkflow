@@ -16,5 +16,5 @@ utils::globalVariables(c(
   "baseline_var_value", "category", "contrast_label", "contrast_name",
   "contrast_var_value", "ess_bulk", "ess_tail", "hi", "indices", "lo", "n",
   "obs", "outcome_type", "parameters", "pareto_k", "probability", "rhat",
-  "scenario", "variable", "y", "y_baseline", "y_index", "y_rep"
+  "scenario", "value", "variable", "y", "y_baseline", "y_index", "y_rep"
 ))
