@@ -4,12 +4,20 @@
 \name{stanworkflow-package}
 \alias{stanworkflow}
 \alias{stanworkflow-package}
-\title{stanworkflow: What the Package Does (One Line, Title Case)}
+\title{stanworkflow: Declarative Bayesian Workflow for Hand-Written 'Stan' Models}
 \description{
-What the package does (one paragraph).
+Wraps 'cmdstanr' in a declarative compile, prior predictive, fit, diagnose and infer pipeline for user-written 'Stan' models. The 'Stan' data block is filled from a data frame by naming convention, each step checkpoints to disk so interrupted runs resume, and posterior contrasts (descriptive or counterfactual, one- or two-way) are computed from posterior predictive or generated-quantity draws.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/ShayOfir/stanworkflow}
+  \item Report bugs at \url{https://github.com/ShayOfir/stanworkflow/issues}
+}
+
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
+\strong{Maintainer}: Shay Ofir-Geva \email{shinofir@gmail.com}
 
 }
 \keyword{internal}

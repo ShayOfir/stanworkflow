@@ -18,55 +18,35 @@ serialization format}
 \item{dir_create}{logical; if \code{TRUE} (default) and directory does not exist,
 create it recursively}
 
-\item{...}{additional arguments passed to \code{JWileymisc::saveRDSfst()}
-(e.g., \code{data_frame}, \code{version}, \code{old_format})}
+\item{...}{ignored (kept for backward compatibility)}
 
 \item{compress}{integer; compression level (0-100). Higher = more compression
-but slower. Default \code{100} (maximum compression, recommended for wflow objects
-with large fitted models)}
+but slower. Default \code{100}.}
 
-\item{algorithm}{character; compression algorithm passed to \code{saveRDSfst()}.
-Options: \code{"ZSTD"} (default, fast), \code{"LZ4"} (very fast, less compression),
-\code{"ZSTD_SMALL"} (slow, smallest file)}
+\item{algorithm}{character; \code{"ZSTD"} (default) or \code{"LZ4"} (faster, less
+compression)}
 }
 \value{
 the \code{wflow} invisibly
 }
 \description{
-Saves a \code{wflow} object to disk using \code{JWileymisc::saveRDSfst()} for
-efficient compression. Significantly faster and more disk-efficient than
-standard \code{saveRDS()}.
+Saves a \code{wflow} object as an RDS file holding an \code{fst}-compressed
+serialization of the object (the format of \code{JWileymisc::saveRDSfst()}, so
+files written by earlier versions and by this version are interchangeable).
 }
 \details{
-Uses \code{JWileymisc::saveRDSfst()} instead of base \code{saveRDS()}:
-\itemize{
-\item \strong{Speed}: ~3-10× faster write/read for large objects
-\item \strong{Disk}: ~30-50\% smaller file sizes (especially for fitted Stan models)
-\item \strong{Compatibility}: RDS format preserved; loads with \code{load_wflow()}
-}
-
-Typical compression settings:
-\itemize{
-\item \verb{compress = 100, algorithm = "ZSTD"}: maximum compression, ~1-2s extra time
-\item \verb{compress = 50, algorithm = "ZSTD"}: balanced (recommended default)
-\item \verb{compress = 0, algorithm = "LZ4"}: fastest, still ~50\% smaller than uncompressed
-}
+The file is \code{saveRDS(fst::compress_fst(serialize(x, NULL)))}. If that
+fails, the object is saved with plain \code{saveRDS()} (with a warning);
+\code{\link[=load_wflow]{load_wflow()}} reads both.
 }
 \examples{
 \dontrun{
 wf <- wflow(...) |> fit_posterior()
-
-# Write with default maximum compression
 wf |> write("./models/m1_posterior.rds")
-
-# Write with fast compression (smaller file)
-wf |> write("./models/m1_posterior.rds", compress = 50)
-
-# Write uncompressed (fastest)
 wf |> write("./models/m1_posterior.rds", compress = 0, algorithm = "LZ4")
 }
 
 }
 \seealso{
-\code{\link[=load_wflow]{load_wflow()}}, \code{\link[JWileymisc:compressedrds]{JWileymisc::saveRDSfst()}}
+\code{\link[=load_wflow]{load_wflow()}}
 }

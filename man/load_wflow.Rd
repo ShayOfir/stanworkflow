@@ -13,17 +13,8 @@ load_wflow(path)
 a \code{wflow} object
 }
 \description{
-Deserializes a \code{wflow} object saved with \code{\link[=write.wflow]{write.wflow()}} using
-\code{JWileymisc::readRDSfst()}. Handles both compressed (fst format) and
-standard RDS files transparently.
-}
-\details{
-Uses \code{JWileymisc::readRDSfst()} which:
-\itemize{
-\item Auto-detects compression format (fst or RDS)
-\item ~3-10× faster than base \code{readRDS()} for compressed files
-\item Falls back gracefully to base \code{readRDS()} for standard \code{.rds} files
-}
+Reads a \code{wflow} saved with \code{\link[=write.wflow]{write.wflow()}}: either the \code{fst}-compressed
+format (also written by \code{JWileymisc::saveRDSfst()}) or a plain RDS file.
 }
 \examples{
 \dontrun{
