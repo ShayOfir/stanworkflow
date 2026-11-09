@@ -2047,8 +2047,8 @@ infer_contrasts <- function(model,
     dplyr::summarise(
       contrast_mean = mean(contrast),
       contrast_sd   = sd(contrast),
-      hpdi_lo       = rethinking::HPDI(contrast, prob = prob)[[1]],
-      hpdi_hi       = rethinking::HPDI(contrast, prob = prob)[[2]],
+      hpdi_lo       = coda::HPDinterval(coda::as.mcmc(contrast), prob = prob)[[1]],
+      hpdi_hi       = coda::HPDinterval(coda::as.mcmc(contrast), prob = prob)[[2]],
       P_positive    = mean(contrast > 0),
       P_negative    = mean(contrast < 0),
       .by           = dplyr::all_of(cell_vars)
