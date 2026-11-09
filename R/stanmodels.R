@@ -1477,6 +1477,11 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
 ppc_by_parameter <- function(x, ...) UseMethod("ppc_by_parameter")
 
 #' @rdname ppc_by_parameter
+#' @details `parameter_draws()` is the same function under a clearer name.
+#' @export
+parameter_draws <- ppc_by_parameter
+
+#' @rdname ppc_by_parameter
 #' @exportS3Method
 ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NULL, ...) {
   
@@ -1623,6 +1628,11 @@ ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NU
 ppc_scenarios <- function(x, ...) UseMethod("ppc_scenarios")
 
 #' @rdname ppc_scenarios
+#' @details `parameter_scenarios()` is the same function under a clearer name.
+#' @export
+parameter_scenarios <- ppc_scenarios
+
+#' @rdname ppc_scenarios
 #' @exportS3Method
 ppc_scenarios.stanmodel <- function(x,
                                     parameter,
@@ -1642,7 +1652,11 @@ ppc_scenarios.stanmodel <- function(x,
     is.list(factors), !is.null(names(factors))
   )
 
-  if (is.null(scenario_levels)){
+  if (!is.null(scenario_levels)) {
+    stopifnot(length(scenario_levels) == 2L)
+    col1 <- scenario_levels[1]
+    col2 <- scenario_levels[2]
+  } else {
     stopifnot(scenario_factor %in% names(factors) && length(factors[[scenario_factor]]) >= 2L)
     col1 <- factors[[scenario_factor]][1]
     col2 <- factors[[scenario_factor]][2]

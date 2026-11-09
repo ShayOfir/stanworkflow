@@ -2,10 +2,13 @@
 % Please edit documentation in R/stanmodels.R
 \name{ppc_scenarios}
 \alias{ppc_scenarios}
+\alias{parameter_scenarios}
 \alias{ppc_scenarios.stanmodel}
 \title{Scenario analysis from posterior parameter draws}
 \usage{
 ppc_scenarios(x, ...)
+
+parameter_scenarios(x, ...)
 
 \method{ppc_scenarios}{stanmodel}(
   x,
@@ -73,4 +76,7 @@ format depends on \code{wide} parameter}
 Extracts wide-format posterior draws via \code{ppc_by_parameter()}, classifies
 each draw into one of four 2-way scenarios, computes scenario probabilities,
 and optionally plots the result.
+}
+\details{
+\code{parameter_scenarios()} is the same function under a clearer name.
 }

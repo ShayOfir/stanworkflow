@@ -2,10 +2,13 @@
 % Please edit documentation in R/stanmodels.R
 \name{ppc_by_parameter}
 \alias{ppc_by_parameter}
+\alias{parameter_draws}
 \alias{ppc_by_parameter.stanmodel}
 \title{Extract posterior draws for a specific parameter, attaching factor labels}
 \usage{
 ppc_by_parameter(x, ...)
+
+parameter_draws(x, ...)
 
 \method{ppc_by_parameter}{stanmodel}(x, parameter, factors, .widen_factor = NULL, ...)
 }
@@ -26,4 +29,7 @@ a tibble with columns for the parameter value and each factor, where factor leve
 }
 \description{
 Extract posterior draws for a specific parameter, attaching factor labels
+}
+\details{
+\code{parameter_draws()} is the same function under a clearer name.
 }
