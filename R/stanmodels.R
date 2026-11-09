@@ -1111,7 +1111,7 @@ grouped_ppc.stanmodel <- function(x,
       values_to = "y_rep"
     ) |>
     dplyr::mutate(
-      .obs_idx = as.integer(stringr::str_extract(.obs_idx, "\\d+"))
+      .obs_idx = as.integer(stringr::str_extract(.obs_idx, "(?<=\\[)\\d+"))
     )
   
    # define cols_to_tile here — outcome + features to carry through

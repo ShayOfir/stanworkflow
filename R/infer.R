@@ -815,7 +815,7 @@ print.inference <- function(x, ...) {
       values_to = "y"
     ) |>
     dplyr::mutate(
-      .obs_idx = as.integer(stringr::str_extract(.obs_idx, "\\d+"))
+      .obs_idx = as.integer(stringr::str_extract(.obs_idx, "(?<=\\[)\\d+"))
     )
 
   # Apply transform_fn element-wise if present
@@ -1028,7 +1028,7 @@ print.inference <- function(x, ...) {
         values_to = "y"
       ) |>
       dplyr::mutate(
-        .obs_idx = as.integer(stringr::str_extract(.obs_idx, "\\d+"))
+        .obs_idx = as.integer(stringr::str_extract(.obs_idx, "(?<=\\[)\\d+"))
       )
 
     if (length(feature_cols) > 0L) {

@@ -64,3 +64,12 @@ test_that("counterfactual contrasts pair the same draws when gq_n_draws is set",
 
   expect_warning(cf_run(m, "y_rep", gq_n_draws = 10), "mu_rep")
 })
+
+test_that("observation index is read from the brackets, not the variable name", {
+  d <- posterior::draws_df(`mu0_rep[1]` = 1:2, `mu0_rep[2]` = 3:4, `mu0_rep[3]` = 5:6)
+  m <- list(draws = d, variables = "mu0_rep")
+  out <- stanworkflow:::.extract_spec_draws(m, data.frame(g = 1:3),
+                                            outcome_spec(gq_var = "mu0_rep"), "g")
+  expect_equal(out$.obs_idx, rep(1:3, 2))
+  expect_equal(out$g, out$.obs_idx)
+})
