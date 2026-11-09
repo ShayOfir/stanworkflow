@@ -32,6 +32,11 @@
   before. Counterfactual contrasts never used this split and are unchanged.
   `get_label()` / `print()` of a categorical contrast now show the levels in
   the order of the computed difference (second minus first).
+* Several categorical counterfactual contrasts on the same variable in one
+  `infer_contrasts()` call (e.g. `s1 - c` and `s2 - c`) each received the
+  draws of all of them: the `contrast_name` column used to pick each
+  contrast's rows was dropped before the filter. Each result now holds only
+  its own contrast. A single categorical contrast per call was unaffected.
 
 ## Behaviour changes
 

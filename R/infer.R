@@ -1119,7 +1119,8 @@ print.inference <- function(x, ...) {
     dplyr::select(
       .chain, .iteration, .draw, .obs_idx,
       dplyr::all_of(feat_cols),
-      y, contrast_var_value, baseline_var_value
+      y, contrast_var_value, baseline_var_value,
+      dplyr::any_of("contrast_name")   # categorical: lets infer_contrasts() pick each contrast's rows
     )
 }
 
