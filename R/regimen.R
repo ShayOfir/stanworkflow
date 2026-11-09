@@ -443,8 +443,7 @@ quick_fit.regimen <- function(x,
     message("Loading prior wflow from: ", x$paths$prior)
     x$wf <- load_wflow(x$paths$prior)
   } else {
-    .check_prepared_regimen(x)
-    if (!x$status$prepared) {
+    if (!x$status$prepared || is.null(x$wf)) {
       x <- x |> prepare(...)
     }
   }

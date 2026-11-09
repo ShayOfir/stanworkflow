@@ -40,6 +40,10 @@
 
 ## Behaviour changes
 
+* `quick_fit()` / `run(steps = "quick_fit")` on an unprepared regimen now
+  prepares it, as documented; it stopped with "Regimen not prepared" before.
+  `run(steps = c("prepare", "quick_fit"))` is unchanged.
+
 * `infer_contrasts(draws_method = "counterfactual")` warns when the outcome is
   `y_rep`: differencing posterior predictive draws adds fresh residual noise at
   each grid point, which biases sign probabilities toward 0.5 (two-way
