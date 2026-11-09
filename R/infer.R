@@ -1441,6 +1441,7 @@ infer_contrasts <- function(model,
   # >>> CHANGED: collect all_needed_vars AFTER expansion so virtual column
   # names like "roi[CST_L]" are included from the expanded contrast objects.
   all_vars_in_expr <- function(expr) {
+    if (rlang::is_quosure(expr)) expr <- rlang::quo_get_expr(expr)   # `[` on quosures is deprecated
     if (rlang::is_symbol(expr)) return(as.character(expr))
     if (rlang::is_call(expr))   return(unlist(lapply(as.list(expr)[-1], all_vars_in_expr)))
     character()
