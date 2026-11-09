@@ -1108,7 +1108,7 @@ grouped_ppc.stanmodel <- function(x,
   # result: S rows (draws) x N columns (y_rep[1]...y_rep[N]) + draw metadata
   y_rep_df <- draws |>
     posterior::subset_draws(variable = "y_rep") |>
-    posterior::as_draws_df()                       # S x (N + 3 metadata cols)
+    posterior::as_draws_df() |> tibble::as_tibble()                      # S x (N + 3 metadata cols)
 
   n_obs   <- ncol(y_rep_df) - 3L  # subtract .chain, .iteration, .draw
   n_draws <- nrow(y_rep_df)
@@ -1492,7 +1492,7 @@ ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NU
 
   draws <- x$draws |>
           posterior::subset_draws(variable = parameter) |>
-          posterior::as_draws_df() 
+          posterior::as_draws_df() |> tibble::as_tibble()
   
   # check if the number of factors in the draws df matches the length of the provided factors list
   n_factors_in_draws <- length(grep("\\[", names(draws)))

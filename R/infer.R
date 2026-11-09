@@ -807,7 +807,7 @@ print.inference <- function(x, ...) {
 
   # Extract named GQ variable as draws_df (S draws x N cols + 3 metadata)
   draws_df <- posterior::subset_draws(model$draws, variable = gq_var) |>
-    posterior::as_draws_df()
+    posterior::as_draws_df() |> tibble::as_tibble()
 
   n_draws <- nrow(draws_df)
 
@@ -1015,7 +1015,7 @@ print.inference <- function(x, ...) {
   .to_long_draws <- function(draws_obj, data_df, feature_cols) {
    
     draws_df <- posterior::subset_draws(draws_obj, variable = gq_var_cf) |>
-      posterior::as_draws_df()
+      posterior::as_draws_df() |> tibble::as_tibble()
 
     n_obs <- ncol(draws_df) - 3L
     if (n_obs != nrow(data_df)) {
