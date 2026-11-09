@@ -63,7 +63,7 @@ posterior sampling. Merged with package defaults via \code{modifyList()}.}
 \item{gq_steps}{integer scalar; number of grid points for counterfactual
 sweeps (default \code{5L}). Ignored if \code{draws_method = "descriptive"}.}
 
-\item{prob}{numeric scalar ∈ (0,1); width of highest posterior density
+\item{prob}{numeric scalar in  (0,1); width of highest posterior density
 intervals (HPDI) for credible intervals in summaries (default \code{0.95}).}
 }
 \value{
@@ -80,7 +80,7 @@ An object of class \code{regimen}, a list containing:
 }
 \description{
 Instantiates a complete Bayesian modelling regimen that orchestrates the
-prepare → tune → fit → infer workflow. A regimen encapsulates data,
+prepare -> tune -> fit -> infer workflow. A regimen encapsulates data,
 model configuration, contrasts, sampler parameters, an underlying wflow,
 and inference results with explicit status tracking.
 }

@@ -18,7 +18,7 @@ contrast(
 )
 }
 \arguments{
-\item{contrast_var}{character scalar — the variable whose levels are contrasted}
+\item{contrast_var}{character scalar -- the variable whose levels are contrasted}
 
 \item{grouping_vars}{character vector of variables to group by}
 

@@ -15,7 +15,7 @@ ppc_scenarios(x, ...)
 \code{ppc_by_parameter()} (e.g. \code{list(direction = c("FLEX","EXT"), finger = c("T","I","M","R","L"))})}
 
 \item{scenario_factor}{character; name of the factor in \code{factors} to use for constructing
-2-way scenarios — its first two levels become the outcome columns
+2-way scenarios -- its first two levels become the outcome columns
 (e.g. "direction" with levels c("FLEX", "EXT"))}
 
 \item{scenario_levels}{optional character vector of length 2; custom outcome levels to use

@@ -25,7 +25,7 @@ infer_contrasts(
 
 \item{data}{data frame used for fitting; if \code{NULL} uses \code{model$data} (default NULL)}
 
-\item{summary_fn}{function to aggregate y within each draw × condition cell (default \code{mean})}
+\item{summary_fn}{function to aggregate y within each draw x condition cell (default \code{mean})}
 
 \item{prob}{HPDI width for credible intervals (default 0.95)}
 
@@ -39,7 +39,7 @@ infer_contrasts(
 ignored for descriptive method)}
 
 \item{gq_n_draws}{optional integer; if set, subsample this many posterior draws
-before each \code{generate_quantities()} call in the counterfactual path — trades
+before each \code{generate_quantities()} call in the counterfactual path -- trades
 Monte Carlo precision for speed and output size. Default \code{NULL} uses all draws
 (unchanged behavior). Ignored for \code{draws_method = "descriptive"}, which never
 calls \code{generate_quantities()}.}

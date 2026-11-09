@@ -8,7 +8,7 @@
 run(wf, ...)
 
 \method{run}{regimen}(
-  x,
+  wf,
   steps = c("prepare", "tune", "fit", "quick_fit", "infer"),
   save = TRUE,
   ...
@@ -21,8 +21,6 @@ run(wf, ...)
 
 \item{...}{forwarded to \code{run_inference()}}
 
-\item{x}{a \code{regimen} object}
-
 \item{steps}{character vector; subset of:
 \itemize{
 \item \code{c("prepare", "tune", "fit", "infer")} (default: all four)
@@ -32,6 +30,8 @@ Controls which pipeline stages to execute.
 }}
 
 \item{save}{logical; if \code{TRUE} (default), intermediate results are saved to disk}
+
+\item{x}{a \code{regimen} object}
 
 \item{contrasts}{contrast object(s) passed to \code{run_inference()}}
 
@@ -51,7 +51,7 @@ the populated \code{regimen} with all requested steps completed
 the fully-populated \code{wflow}
 }
 \description{
-Orchestrates the complete workflow: prepare → tune → fit → infer.
+Orchestrates the complete workflow: prepare -> tune -> fit -> infer.
 Individual steps can be skipped via the \code{steps} argument. Each step is
 idempotent if the corresponding wflow or inference file exists on disk.
 

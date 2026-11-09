@@ -9,7 +9,7 @@
 \arguments{
 \item{y_obs}{numeric vector of observed values}
 
-\item{y_rep_mat}{draws matrix (n_draws × n_obs)}
+\item{y_rep_mat}{draws matrix (n_draws x n_obs)}
 
 \item{obs_var}{character label used in plot titles}
 

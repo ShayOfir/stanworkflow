@@ -29,7 +29,7 @@ Status flags \verb{$status$tuned} and \code{posterior_predictive} results remain
 }
 \description{
 Skips prior and posterior predictive checks and diagnostics to save time
-and disk space. Only runs: prepare → fit. Useful for mass-univariate
+and disk space. Only runs: prepare -> fit. Useful for mass-univariate
 applications where many models are fitted across ROIs/conditions.
 }
 \details{

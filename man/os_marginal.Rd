@@ -3,11 +3,11 @@
 \name{os_marginal}
 \alias{os_marginal}
 \title{Marginal expected outcome: E\link[ggplot2:aes_position]{ggplot2::y} = P(respond) * E y respond
-Primary inferential target for hurdle models (Bürkner 2017, Woody et al. 2021)}
+Primary inferential target for hurdle models (Buerkner 2017, Woody et al. 2021)}
 \usage{
 os_marginal()
 }
 \description{
 Marginal expected outcome: E\link[ggplot2:aes_position]{ggplot2::y} = P(respond) * E y respond
-Primary inferential target for hurdle models (Bürkner 2017, Woody et al. 2021)
+Primary inferential target for hurdle models (Buerkner 2017, Woody et al. 2021)
 }

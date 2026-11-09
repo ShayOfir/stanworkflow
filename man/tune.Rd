@@ -7,7 +7,7 @@
 \usage{
 tune(wf, sampler_params = NULL, file = NULL, ...)
 
-\method{tune}{regimen}(x, save = TRUE, ...)
+\method{tune}{regimen}(wf, save = TRUE, ...)
 
 tune(wf, sampler_params = NULL, file = NULL, ...)
 }
@@ -20,9 +20,9 @@ tune(wf, sampler_params = NULL, file = NULL, ...)
 
 \item{...}{additional arguments passed to \code{ppc.stanmodel()}.}
 
-\item{x}{a \code{regimen} with \verb{$status$prepared = TRUE}}
-
 \item{save}{logical; if \code{TRUE} (default), saves the wflow to \verb{$paths$prior}}
+
+\item{x}{a \code{regimen} with \verb{$status$prepared = TRUE}}
 }
 \value{
 the \code{regimen} with \verb{$wf$prior_fit} populated and \verb{$status$tuned = TRUE}

@@ -44,14 +44,14 @@ recommended by Gabry et al. (2019) and Gelman et al. (2020).
 densities vs. observed. Too narrow = overconfident model; too wide =
 prior dominates.
 \item \emph{Marginal test statistics} (\code{ppc_stat}): mean, sd, median, mad, min, max.
-Bayesian p-value p_B = P(T(y_rep) ≥ T(y)). Values outside (0.05, 0.95)
-flag misfit in that dimension (Gelman BDA3 §6.3).
-\item \emph{Joint mean–sd plot} (\code{ppc_stat_2d}): Gabry et al. primary visual
+Bayesian p-value p_B = P(T(y_rep) >= T(y)). Values outside (0.05, 0.95)
+flag misfit in that dimension (Gelman BDA3 Sec. 6.3).
+\item \emph{Joint mean-sd plot} (\code{ppc_stat_2d}): Gabry et al. primary visual
 recommendation. The observed point should sit inside the bulk of the
-cloud; peripheral placement signals systematic location–scale misfit.
+cloud; peripheral placement signals systematic location-scale misfit.
 \item \emph{Coverage calibration}: empirical coverage of 50\% and 90\% predictive
-intervals. Systematic under-coverage → too tight; over-coverage → too
-wide (Gelman et al. 2020 §4).
+intervals. Systematic under-coverage -> too tight; over-coverage -> too
+wide (Gelman et al. 2020 Sec. 4).
 }
 }
 \references{

@@ -10,7 +10,7 @@ loo_cv(x, ...)
 \item{x}{a fitted \code{stanmodel} object}
 
 \item{moment_matching}{logical; apply moment matching for k > 0.7 obs
-(requires \code{loo} >= 2.4.0). Gelman §7 recommends this before discarding
+(requires \code{loo} >= 2.4.0). Gelman Sec. 7 recommends this before discarding
 the LOO estimate. Default FALSE.}
 
 \item{plot}{logical; render Pareto-k plot. Default FALSE.}
@@ -34,7 +34,7 @@ Computes Pareto-smoothed importance sampling LOO-CV (PSIS-LOO) via the
 \details{
 \strong{Conceptual grounding:}
 
-\emph{Gelman et al. (2020) §7 — Model comparison and stacking:}
+\emph{Gelman et al. (2020) Sec. 7 -- Model comparison and stacking:}
 LOO-CV is the preferred comparison tool in the Bayesian workflow because it
 estimates out-of-sample predictive accuracy without refitting the model. The
 workflow recommendation is to first check each model's absolute fit via
@@ -43,34 +43,34 @@ predictive checks. A model that wins LOO but fails its PPC is not to be
 trusted. \code{loo_compare()} differences should be interpreted relative to their
 SE: a difference < 2 SE is not decisive.
 
-\emph{McElreath SR2 §7 — Ulysses' Compass:}
+\emph{McElreath SR2 Sec. 7 -- Ulysses' Compass:}
 Information criteria penalise complexity to balance underfitting and
-overfitting (the bias–variance tradeoff McElreath frames as "Scylla and
+overfitting (the bias-variance tradeoff McElreath frames as "Scylla and
 Charybdis"). PSIS-LOO approximates LOOCV and is preferable to WAIC when
 Pareto-k diagnostics are examined alongside it. \code{p_loo} is the "effective
-number of parameters" — McElreath's penalty term. When \code{p_loo} >> the
+number of parameters" -- McElreath's penalty term. When \code{p_loo} >> the
 nominal parameter count the model is either overfitting or misspecified
-(SR2 §7.5). The Pareto-k per-observation diagnostic directly reveals
+(SR2 Sec. 7.5). The Pareto-k per-observation diagnostic directly reveals
 \emph{which} observations drive complexity; McElreath recommends inspecting
 high-k points substantively rather than just statistically.
 
 \strong{Metrics:}
 \itemize{
 \item \emph{elpd_loo}: expected log pointwise predictive density; higher = better
-out-of-sample accuracy (SR2 §7.3, Gelman §7).
-\item \emph{p_loo}: effective parameters. Compare to nominal count (Gelman §7,
-SR2 §7.5).
-\item \emph{looic}: -2 × elpd_loo, deviance scale. Lower = better. Use for
-\code{loo_compare()} across models fit to the same data (SR2 §7.4).
-\item \emph{Pareto-k}: per-observation stability. k < 0.5 good; 0.5–0.7 OK;
-0.7–1.0 problematic (high-influence observation); > 1.0 PSIS fails.
-McElreath SR2 §7.5: high-k points are not outliers to discard — they are
+out-of-sample accuracy (SR2 Sec. 7.3, Gelman Sec. 7).
+\item \emph{p_loo}: effective parameters. Compare to nominal count (Gelman Sec. 7,
+SR2 Sec. 7.5).
+\item \emph{looic}: -2 x elpd_loo, deviance scale. Lower = better. Use for
+\code{loo_compare()} across models fit to the same data (SR2 Sec. 7.4).
+\item \emph{Pareto-k}: per-observation stability. k < 0.5 good; 0.5-0.7 OK;
+0.7-1.0 problematic (high-influence observation); > 1.0 PSIS fails.
+McElreath SR2 Sec. 7.5: high-k points are not outliers to discard -- they are
 the most \emph{informative} observations and deserve substantive scrutiny.
 }
 }
 \references{
-Gelman et al. (2020). Bayesian Workflow. arXiv:2011.01808 §7.
-McElreath (2020). Statistical Rethinking 2e. CRC Press. §7.
+Gelman et al. (2020). Bayesian Workflow. arXiv:2011.01808 Sec. 7.
+McElreath (2020). Statistical Rethinking 2e. CRC Press. Sec. 7.
 Vehtari, Gelman & Gabry (2017). Practical Bayesian model evaluation
 using LOO-CV and WAIC. \emph{Stat Comput} 27(5).
 }
