@@ -140,6 +140,7 @@ stanmodel <- function() {
 #' @export
 compile_from_string <- function(x, ...) UseMethod("compile_from_string")
 
+#' @rdname compile_from_string
 #' @exportS3Method
 compile_from_string.stanmodel <- function(x, model_code, ...) {
   stan_file <- cmdstanr::write_stan_file(model_code)
@@ -153,6 +154,7 @@ compile_from_string.stanmodel <- function(x, model_code, ...) {
 #' @export
 compile_from_file <- function(x, ...) UseMethod("compile_from_file")
 
+#' @rdname compile_from_file
 #' @exportS3Method
 compile_from_file.stanmodel <- function(x, stan_file, ...) {
   model_code       <- paste(readLines(stan_file), collapse = "\n")
@@ -167,11 +169,13 @@ compile_from_file.stanmodel <- function(x, stan_file, ...) {
 #' @param df a dataframe
 #' @param extra named list of additional pre-computed values (e.g. matrices)
 #' @param cond_df an optional dataframe of conditioning variables for *_cond_array vars
+#' @param ... additional arguments passed to methods
 #' @return a named list; NA entries need to be filled by the user
 #' @importFrom dplyr n_distinct
 #' @export
 get_stan_data <- function(x, ...) UseMethod("get_stan_data")
 
+#' @rdname get_stan_data
 #' @exportS3Method
 get_stan_data.stanmodel <- function(x,
                                     df,
@@ -281,6 +285,7 @@ get_stan_data.stanmodel <- function(x,
 #' @export
 fit <- function(x, ...) UseMethod("fit")
 
+#' @rdname fit
 #' @exportS3Method
 fit.stanmodel <- function(x,
                           data,
@@ -384,6 +389,7 @@ fit.stanmodel <- function(x,
 #'   `model_code`) so repeated `gq()` calls on the same model skip
 #'   `write_stan_file()`/`cmdstan_model()` after the first call. Set `FALSE`
 #'   to force the original per-call recompile behavior.
+#' @param ... additional arguments passed to methods
 #' @return draws object containing the generated quantities
 gq <- function(x, ...) UseMethod("gq")
 
@@ -395,6 +401,7 @@ gq <- function(x, ...) UseMethod("gq")
 # behavior back with no code edit.
 .gq_model_cache <- new.env(parent = emptyenv())
 
+#' @rdname gq
 #' @exportS3Method
 gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_compiled = TRUE, draw_ids = NULL, ...){
   mod_gqp <- if (cache_compiled) .gq_model_cache[[x$model_code]] else NULL
@@ -741,6 +748,11 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 #' @param filter_expr an optional dplyr-style expression to filter rows of `data`
 #' @param filter_fn an optional function of the form `function(y_obs, y_rep)` that returns a list with filtered `y_obs` and `y_rep`. If both `filter_expr` and `filter_fn` are provided, `filter_expr` takes precedence.
 #' @param outcomes an optional named list of outcome specifications. Each element should be a list with `obs_var` (name of the observed variable in `x$stan_data`) and `rep_var` (name of the replicated variable in `x$draws`). If NULL, defaults to the single outcome used at fit time.
+#' @param .by optional character vector (length <= 2) of columns of `data` to group the checks by (default NULL)
+#' @param .levels optional named list of level orderings for the `.by` variables (default NULL)
+#' @param .by optional character vector (length <= 2) of columns of `data` to group the checks by (default NULL)
+#' @param .levels optional named list of level orderings for the `.by` variables (default NULL)
+#' @param ... additional arguments passed to methods
 #' @return a named list:
 #'   \describe{
 #'     \item{`plots`}{named list of ggplot objects: `density_overlay`,
@@ -764,6 +776,7 @@ ppc <- function(x, ...) UseMethod("ppc")
 
 
 # ---- ppc --------------------------------------------------------------------
+#' @rdname ppc
 #' @exportS3Method
 ppc.stanmodel <- function(x,
                            n_draws     = 50L,
@@ -1047,6 +1060,7 @@ ppc_results <- function(plots, coverage, bayes_pvalues, interpretation, outcomes
 #' @param feature_names   character vector of column names in `data` to attach
 #' @param enforce_features logical (= TRUE) whether to require that all `feature_names` are present in `data`; if FALSE, only the features that exist in `data` will be included
 #' @param preserve_.draws logical (= FALSE) whether to keep the .chain, .iteration, and .draw columns in the output; if FALSE, these are dropped for a cleaner format
+#' @param ... additional arguments passed to methods
 #' @return a tibble with columns: `outcome_type` (observed vs. posterior), `outcome` (numeric), and one column per feature in `feature_names`
 #' @importFrom posterior as_draws_df subset_draws
 #' @importFrom dplyr select mutate
@@ -1054,6 +1068,7 @@ ppc_results <- function(plots, coverage, bayes_pvalues, interpretation, outcomes
 #' @export
 grouped_ppc <- function(x, ...) UseMethod("grouped_ppc")
 
+#' @rdname grouped_ppc
 #' @exportS3Method
 grouped_ppc.stanmodel <- function(x, 
                                   data,
@@ -1163,6 +1178,8 @@ grouped_ppc.stanmodel <- function(x,
 #'
 #' @param x a `ppc_results` object
 #' @param plot logical; if TRUE, all plots are rendered (default FALSE)
+#' @param plot_minimal logical; if TRUE (default) and `plot = TRUE`, render only the density overlay and mean-sd plots
+#' @param plot_minimal logical; if TRUE (default) and `plot = TRUE`, render only the density overlay and mean-sd plots
 #' @param ... unused
 #' @exportS3Method
 print.ppc_results <- function(x, plot = FALSE, plot_minimal = TRUE, ...) {
@@ -1310,6 +1327,7 @@ display.ppc_results_grouped <- function(x, ...) {
 #' @param x a fitted `stanmodel` object
 #' @param params optional character vector of parameter names to check; if NULL, checks all
 #' @param plot logical; if TRUE, renders traceplots for specified parameters (default FALSE)
+#' @param ... additional arguments passed to methods
 #' @return a data frame summarizing convergence diagnostics for each parameter
 #' @importFrom posterior summarise_draws subset_draws
 #' @importFrom bayesplot mcmc_trace
@@ -1319,6 +1337,7 @@ display.ppc_results_grouped <- function(x, ...) {
 diagnose <- function(x, ...) UseMethod("diagnose")
 
 
+#' @rdname diagnose
 #' @exportS3Method
 diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
   if (!inherits(x, "stanmodel")) {
@@ -1445,6 +1464,7 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
 #' @param factors a named list mapping factor names to their levels, e.g. list
 #'  condition = c("control", "treatment"), time = c("pre", "post"))
 #' @param .widen_factor optional character name of a factor to pivot wider, creating one column per level of that factor
+#' @param ... additional arguments passed to methods
 #' @return a tibble with columns for the parameter value and each factor, where factor levels are attached according to the indices in the parameter name.
 #' @importFrom posterior as_draws_df subset_draws
 #' @importFrom dplyr mutate select across
@@ -1456,6 +1476,7 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
 #' @export
 ppc_by_parameter <- function(x, ...) UseMethod("ppc_by_parameter")
 
+#' @rdname ppc_by_parameter
 #' @exportS3Method
 ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NULL, ...) {
   
@@ -1583,7 +1604,10 @@ ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NU
 #'                       (e.g. `~ finger`). If NULL and one grouping variable exists,
 #'                       a formula is constructed automatically.
 #' @param title           optional character; plot title
+#' @param multiple_plots optional character; name of a factor in `factors` to draw one plot per level of (default NULL)
+#' @param multiple_plots optional character; name of a factor in `factors` to draw one plot per level of (default NULL)
 #'
+#' @param ... additional arguments passed to methods
 #' @return A list with:
 #'   \describe{
 #'     \item{`draws`}{wide-format draws tibble from `ppc_by_parameter()` with one column
@@ -1598,6 +1622,7 @@ ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NU
 #' @export
 ppc_scenarios <- function(x, ...) UseMethod("ppc_scenarios")
 
+#' @rdname ppc_scenarios
 #' @exportS3Method
 ppc_scenarios.stanmodel <- function(x,
                                     parameter,

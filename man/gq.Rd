@@ -2,12 +2,25 @@
 % Please edit documentation in R/stanmodels.R
 \name{gq}
 \alias{gq}
+\alias{gq.stanmodel}
 \title{gq - method for using generate_quantities() method in stanmodel}
 \usage{
 gq(x, ...)
+
+\method{gq}{stanmodel}(
+  x,
+  new_data,
+  n_draws = NULL,
+  output_dir = NULL,
+  cache_compiled = TRUE,
+  draw_ids = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{a \code{stanmodel} object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{new_data}{dataset to use for generated quantities}
 
@@ -17,10 +30,6 @@ posterior draws, a random subsample of \code{n_draws} draws is used for
 precision for speed and output size. Default \code{NULL} uses all draws
 (unchanged behavior). Each call draws a new subsample; use \code{draw_ids} when
 several calls must use the same draws.}
-
-\item{draw_ids}{optional integer vector of posterior draw indices to use
-(overrides \code{n_draws}). Pass the same ids to every call whose outputs are
-joined draw by draw.}
 
 \item{output_dir}{optional directory for CmdStan's GQ output CSVs. Default
 \code{NULL} uses a fresh temp directory that is deleted automatically after
@@ -32,6 +41,10 @@ compiled from \code{x$model_code} is memoized per session (keyed by
 \code{model_code}) so repeated \code{gq()} calls on the same model skip
 \code{write_stan_file()}/\code{cmdstan_model()} after the first call. Set \code{FALSE}
 to force the original per-call recompile behavior.}
+
+\item{draw_ids}{optional integer vector of posterior draw indices to use
+(overrides \code{n_draws}). Pass the same ids to every call whose outputs are
+joined draw by draw.}
 }
 \value{
 draws object containing the generated quantities

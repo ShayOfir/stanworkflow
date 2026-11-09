@@ -45,6 +45,8 @@ Requires \code{continuous = FALSE}. Default NULL.}
 
 \item{two_way_levels}{optional character vector of exactly 2 levels from \code{two_way}
 variable to use as the two outcomes. If NULL, uses first 2 levels automatically.}
+
+\item{outcome}{optional outcome specification (e.g. from \code{os_marginal()}); NULL (default) uses the y_rep draws}
 }
 \value{
 an object of class \code{contrast}

@@ -2,12 +2,17 @@
 % Please edit documentation in R/wflow.R
 \name{attach_data}
 \alias{attach_data}
+\alias{attach_data.wflow}
 \title{Attach data to a wflow object}
 \usage{
 attach_data(wf, ...)
+
+\method{attach_data}{wflow}(wf, data, extra = list(), cond_df = NULL, outcome_var = "y", ...)
 }
 \arguments{
 \item{wf}{a \code{wflow} object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{data}{data frame of observations (trial-level)}
 

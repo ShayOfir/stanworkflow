@@ -2,9 +2,12 @@
 % Please edit documentation in R/wflow.R
 \name{fit_posterior}
 \alias{fit_posterior}
+\alias{fit_posterior.wflow}
 \title{Fit the posterior model}
 \usage{
 fit_posterior(wf, sampler_params_list, ...)
+
+\method{fit_posterior}{wflow}(wf, sampler_params_list = NULL, ...)
 }
 \arguments{
 \item{wf}{a \code{wflow} with data attached}

@@ -2,12 +2,27 @@
 % Please edit documentation in R/stanmodels.R
 \name{ppc}
 \alias{ppc}
+\alias{ppc.stanmodel}
 \title{Prior and posterior predictive checks}
 \usage{
 ppc(x, ...)
+
+\method{ppc}{stanmodel}(
+  x,
+  n_draws = 50L,
+  data = NULL,
+  filter_expr = NULL,
+  filter_fn = NULL,
+  outcomes = NULL,
+  .by = NULL,
+  .levels = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{a fitted \code{stanmodel} object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{n_draws}{number of y_rep draws for the density overlay (default 50)}
 
@@ -18,6 +33,10 @@ ppc(x, ...)
 \item{filter_fn}{an optional function of the form \verb{function(y_obs, y_rep)} that returns a list with filtered \code{y_obs} and \code{y_rep}. If both \code{filter_expr} and \code{filter_fn} are provided, \code{filter_expr} takes precedence.}
 
 \item{outcomes}{an optional named list of outcome specifications. Each element should be a list with \code{obs_var} (name of the observed variable in \code{x$stan_data}) and \code{rep_var} (name of the replicated variable in \code{x$draws}). If NULL, defaults to the single outcome used at fit time.}
+
+\item{.by}{optional character vector (length <= 2) of columns of \code{data} to group the checks by (default NULL)}
+
+\item{.levels}{optional named list of level orderings for the \code{.by} variables (default NULL)}
 }
 \value{
 a named list:

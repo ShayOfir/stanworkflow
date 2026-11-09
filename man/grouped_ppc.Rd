@@ -2,12 +2,24 @@
 % Please edit documentation in R/stanmodels.R
 \name{grouped_ppc}
 \alias{grouped_ppc}
+\alias{grouped_ppc.stanmodel}
 \title{Flatten y_rep draws into a long dataframe with factor labels}
 \usage{
 grouped_ppc(x, ...)
+
+\method{grouped_ppc}{stanmodel}(
+  x,
+  data,
+  feature_names,
+  enforce_features = TRUE,
+  preserve_.draws = FALSE,
+  ...
+)
 }
 \arguments{
 \item{x}{a fitted \code{stanmodel} obbject}
+
+\item{...}{additional arguments passed to methods}
 
 \item{data}{the original data frame used to fit the model (nrow = N)}
 

@@ -11,6 +11,8 @@
 
 \item{plot}{logical; if TRUE, all plots are rendered (default FALSE)}
 
+\item{plot_minimal}{logical; if TRUE (default) and \code{plot = TRUE}, render only the density overlay and mean-sd plots}
+
 \item{...}{unused}
 }
 \description{

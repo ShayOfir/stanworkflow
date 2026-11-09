@@ -3,6 +3,7 @@
 \name{run}
 \alias{run}
 \alias{run.regimen}
+\alias{run.wflow}
 \title{Execute the full regimen pipeline (with quick_fit option)}
 \usage{
 run(wf, ...)
@@ -15,9 +16,24 @@ run(wf, ...)
 )
 
 run(wf, ...)
+
+\method{run}{wflow}(
+  wf,
+  contrasts,
+  sampler_params = NULL,
+  posterior_predictive = TRUE,
+  diagnostic_params = NULL,
+  diagnostic_plot = FALSE,
+  summary_fn = mean,
+  prob = 0.95,
+  draws_method = "counterfactual",
+  gq_steps = 5,
+  file = NULL,
+  ...
+)
 }
 \arguments{
-\item{wf}{a \code{wflow} with data attached}
+\item{wf}{a \code{wflow} with data attached (or a \code{regimen})}
 
 \item{...}{forwarded to \code{run_inference()}}
 
@@ -31,17 +47,23 @@ Controls which pipeline stages to execute.
 
 \item{save}{logical; if \code{TRUE} (default), intermediate results are saved to disk}
 
-\item{x}{a \code{regimen} object}
-
 \item{contrasts}{contrast object(s) passed to \code{run_inference()}}
 
 \item{sampler_params}{optional list of sampler overrides for this run}
 
 \item{posterior_predictive}{logical; run posterior predictive checks (default TRUE)}
 
+\item{diagnostic_params}{list of parameters for diagnostics (default NULL)}
+
 \item{diagnostic_plot}{logical; render traceplots (default FALSE)}
 
-\item{diagnostic_params}{list of parameters for diagnostics (default NULL)}
+\item{summary_fn}{aggregation function passed to \code{infer_contrasts()} (default \code{mean})}
+
+\item{prob}{HPDI width passed to \code{infer_contrasts()} (default 0.95)}
+
+\item{draws_method}{\code{"descriptive"} or \code{"counterfactual"} (default), passed to \code{infer_contrasts()}}
+
+\item{gq_steps}{grid resolution for counterfactual sweeps (default 5)}
 
 \item{file}{optional file path to save the \code{wflow} object after running}
 }

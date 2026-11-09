@@ -2,9 +2,20 @@
 % Please edit documentation in R/wflow.R
 \name{run_inference}
 \alias{run_inference}
+\alias{run_inference.wflow}
 \title{Compute posterior contrasts and store results}
 \usage{
 run_inference(wf, ...)
+
+\method{run_inference}{wflow}(
+  wf,
+  contrasts,
+  name = "main",
+  data = NULL,
+  extra = NULL,
+  numeric_arrays = NULL,
+  ...
+)
 }
 \arguments{
 \item{wf}{a \code{wflow} with \verb{$post_fit} populated}
@@ -17,6 +28,10 @@ run_inference(wf, ...)
 (default \code{"main"})}
 
 \item{data}{data frame to use for inference; NULL uses \verb{$data$data}}
+
+\item{extra}{optional named list of additional Stan data passed to \code{get_stan_data()} (default NULL)}
+
+\item{numeric_arrays}{optional character vector (or named list of column subsets) naming numeric array variables used by continuous contrasts (default NULL)}
 }
 \value{
 the \code{wflow} with \verb{$inference[[name]]} populated

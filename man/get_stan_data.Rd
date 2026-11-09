@@ -2,12 +2,17 @@
 % Please edit documentation in R/stanmodels.R
 \name{get_stan_data}
 \alias{get_stan_data}
+\alias{get_stan_data.stanmodel}
 \title{Build a Stan data list from a dataframe}
 \usage{
 get_stan_data(x, ...)
+
+\method{get_stan_data}{stanmodel}(x, df, extra = list(), cond_df = NULL, ...)
 }
 \arguments{
 \item{x}{a stanmodel object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{df}{a dataframe}
 

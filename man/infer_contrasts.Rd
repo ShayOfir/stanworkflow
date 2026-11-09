@@ -25,6 +25,10 @@ infer_contrasts(
 
 \item{data}{data frame used for fitting; if \code{NULL} uses \code{model$data} (default NULL)}
 
+\item{extra}{optional named list of additional Stan data passed to \code{get_stan_data()} (default NULL)}
+
+\item{numeric_arrays}{optional character vector (or named list of column subsets) naming numeric array variables used by continuous contrasts (default NULL)}
+
 \item{summary_fn}{function to aggregate y within each draw x condition cell (default \code{mean})}
 
 \item{prob}{HPDI width for credible intervals (default 0.95)}

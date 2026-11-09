@@ -2,9 +2,12 @@
 % Please edit documentation in R/stanmodels.R
 \name{compile_from_string}
 \alias{compile_from_string}
+\alias{compile_from_string.stanmodel}
 \title{Compile a stanmodel from a string of code}
 \usage{
 compile_from_string(x, ...)
+
+\method{compile_from_string}{stanmodel}(x, model_code, ...)
 }
 \arguments{
 \item{x}{a stanmodel object}

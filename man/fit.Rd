@@ -3,6 +3,7 @@
 \name{fit}
 \alias{fit}
 \alias{fit.regimen}
+\alias{fit.stanmodel}
 \title{Fit the posterior for a regimen}
 \usage{
 fit(x, ...)
@@ -18,6 +19,19 @@ fit(x, ...)
 )
 
 fit(x, ...)
+
+\method{fit}{stanmodel}(
+  x,
+  data,
+  stan_data = NULL,
+  priors = NULL,
+  sampler_params = NULL,
+  prior_predictive = FALSE,
+  outcome_var = "y",
+  extra = list(),
+  cond_df = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{a stanmodel object}
@@ -41,8 +55,6 @@ disk, load it instead of re-preparing}
 
 \item{data}{a dataframe containing the data to fit; columns should match those expected by the model code and specified in \code{stan_data}}
 
-\item{outcome_var}{the name of the outcome variable in \code{data} (default: "y")}
-
 \item{stan_data}{an optional named list of data to pass to Stan; if NULL, will be generated from \code{data} and \code{outcome_var} using \code{get_stan_data()}}
 
 \item{priors}{an optional \code{priors} object; overrides \verb{prior_*} fields in \code{stan_data}}
@@ -50,6 +62,8 @@ disk, load it instead of re-preparing}
 \item{sampler_params}{an optional \code{sampler_params} object}
 
 \item{prior_predictive}{if TRUE, sets \code{skip_likelihood} to 1 in \code{stan_data} for prior predictive checks (if the model supports it)}
+
+\item{outcome_var}{the name of the outcome variable in \code{data} (default: "y")}
 
 \item{extra}{a named list of additional pre-computed values to merge into \code{stan_data} (e.g. matrices)}
 

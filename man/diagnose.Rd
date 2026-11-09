@@ -2,13 +2,18 @@
 % Please edit documentation in R/stanmodels.R
 \name{diagnose}
 \alias{diagnose}
+\alias{diagnose.stanmodel}
 \title{Convergence diagnostics for fitted stanmodel
 Checks R-hat, effective sample size (ESS), divergences, treedepth, and energy diagnostics. Optionally renders traceplots.}
 \usage{
 diagnose(x, ...)
+
+\method{diagnose}{stanmodel}(x, params = NULL, plot = FALSE, ...)
 }
 \arguments{
 \item{x}{a fitted \code{stanmodel} object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{params}{optional character vector of parameter names to check; if NULL, checks all}
 

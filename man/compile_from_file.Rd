@@ -2,9 +2,12 @@
 % Please edit documentation in R/stanmodels.R
 \name{compile_from_file}
 \alias{compile_from_file}
+\alias{compile_from_file.stanmodel}
 \title{Compile a stanmodel from a .stan file}
 \usage{
 compile_from_file(x, ...)
+
+\method{compile_from_file}{stanmodel}(x, stan_file, ...)
 }
 \arguments{
 \item{x}{a stanmodel object}

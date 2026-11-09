@@ -228,7 +228,6 @@ prepare.regimen <- function(x, ...) {
 #' stores the resulting `wflow` to disk at `$paths$prior`. Useful for
 #' prior sensitivity checks and model debugging before fitting.
 #'
-#' @param x a `regimen` with `$status$prepared = TRUE`
 #' @param save logical; if `TRUE` (default), saves the wflow to `$paths$prior`
 #' @param ... additional arguments passed to [tune()]
 #'
@@ -237,7 +236,7 @@ prepare.regimen <- function(x, ...) {
 #' @seealso [run()], [fit()], [prepare()]
 #'
 #' @export
-tune <- function(x, ...) UseMethod("tune")
+tune <- function(wf, ...) UseMethod("tune")
 
 #' @rdname tune
 #' @export
@@ -495,7 +494,6 @@ quick_fit.regimen <- function(x,
 #' Alternatively, use `steps = "quick_fit"` to skip prior/posterior checks
 #' and diagnostics (fast, disk-efficient for mass-univariate workflows).
 #'
-#' @param x a `regimen` object
 #' @param steps character vector; subset of:
 #'   - `c("prepare", "tune", "fit", "infer")` (default: all four)
 #'   - `"quick_fit"` (special: prepare + fit, skip all checks)
@@ -529,7 +527,7 @@ quick_fit.regimen <- function(x,
 #' }
 #'
 #' @export
-run <- function(x, ...) UseMethod("run")
+run <- function(wf, ...) UseMethod("run")
 
 #' @rdname run
 #' @export

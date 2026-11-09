@@ -115,10 +115,12 @@ print.wflow <- function(x, ...) {
 #' @param extra   named list of additional Stan data (matrices, scalars, etc.)
 #' @param cond_df optional condition-level data frame for `*_cond_array` vars
 #' @param outcome_var name of the outcome column in `data` (default `"y"`)
+#' @param ... additional arguments passed to methods
 #' @return the `wflow` with `$data` populated
 #' @export
 attach_data <- function(wf, ...) UseMethod("attach_data")
 
+#' @rdname attach_data
 #' @exportS3Method
 attach_data.wflow <- function(wf,
                                data,
@@ -145,12 +147,12 @@ attach_data.wflow <- function(wf,
 #' @param wf  a `wflow` with data attached via `attach_data()`
 #' @param prior_predictive logical; run prior predictive checks (default TRUE)
 #' @param sampler_params a `sampler_params` object, containing the parameters for the prior predictive sampling
-#' @param ppc logical; run `ppc()` on the prior fit (default FALSE)
-#' @param ... additional arguments passed to `ppc.stanmodel()`. Ignored if `ppc = FALSE`.
+#' @param ... additional arguments passed to `ppc.stanmodel()`.
 #' @return the `wflow` with `$prior_fit` populated
 #' @export
 run_predictive_checks <- function(wf,...) UseMethod("run_predictive_checks")
 
+#' @rdname run_predictive_checks
 #' @exportS3Method
 run_predictive_checks.wflow <- function(wf, prior_predictive = TRUE, sampler_params = NULL,  ...) {
 
@@ -239,6 +241,7 @@ set_as_tuned.wflow <- function(wf) {
 #' @export
 fit_posterior <- function(wf, sampler_params_list, ...) UseMethod("fit_posterior")
 
+#' @rdname fit_posterior
 #' @exportS3Method
 fit_posterior.wflow <- function(wf, sampler_params_list = NULL, ...) {
   .check_data(wf)
@@ -277,10 +280,12 @@ fit_posterior.wflow <- function(wf, sampler_params_list = NULL, ...) {
 #' @param params character vector of parameter names; NULL uses the params
 #'   loaded from `diagnostics_params.csv` (or all non-yrep params if absent)
 #' @param plot  logical; render traceplots (default FALSE)
+#' @param ... additional arguments passed to methods
 #' @return the `wflow` invisibly (diagnostics printed as side effect)
 #' @export
 run_diagnostics <- function(wf, ...) UseMethod("run_diagnostics")
 
+#' @rdname run_diagnostics
 #' @exportS3Method
 run_diagnostics.wflow <- function(wf, params = NULL, plot = FALSE, ...) {
   .check_post_fit(wf)
@@ -302,11 +307,16 @@ run_diagnostics.wflow <- function(wf, params = NULL, plot = FALSE, ...) {
 #' @param name     character; key under `$inference` to store the result
 #'   (default `"main"`)
 #' @param data     data frame to use for inference; NULL uses `$data$data`
+#' @param extra      optional named list of additional Stan data passed to `get_stan_data()` (default NULL)
+#' @param numeric_arrays optional character vector (or named list of column subsets) naming numeric array variables used by continuous contrasts (default NULL)
+#' @param extra      optional named list of additional Stan data passed to `get_stan_data()` (default NULL)
+#' @param numeric_arrays optional character vector (or named list of column subsets) naming numeric array variables used by continuous contrasts (default NULL)
 #' @param ...      additional arguments forwarded to `infer_contrasts()`
 #' @return the `wflow` with `$inference[[name]]` populated
 #' @export
 run_inference <- function(wf, ...) UseMethod("run_inference")
 
+#' @rdname run_inference
 #' @exportS3Method
 run_inference.wflow <- function(wf,
                                  contrasts,
@@ -334,14 +344,15 @@ run_inference.wflow <- function(wf,
 #' Tune hyperpriors via prior predictive checks
 #' 
 #' This function runs prior predictive checks to help tune hyperpriors. It fits the model with `skip_likelihood = 1` and stores the result in `$prior_fit`. Use `ppc(wf$prior_fit, ...)` for visual checks.
-#' @param wf  a `wflow` with data attached via `attach_data()`
+#' @param wf  a `wflow` with data attached via `attach_data()` (or a `regimen`)
 #' @param sampler_params a `sampler_params` object, containing the parameters for the prior predictive sampling
 #' @param file optional file path to save the `wflow` object after tuning
 #' @param ... additional arguments passed to `ppc.stanmodel()`. 
 #' @return the `wflow` with `$prior_fit` populated
 #' @export
-tune <- function(wf, sampler_params = NULL, file = NULL, ...) UseMethod("tune")
+tune <- function(wf, ...) UseMethod("tune")
 
+#' @rdname tune
 #' @exportS3Method
 tune.wflow <- function(wf, sampler_params = NULL, file = NULL, ...) {
   .check_data(wf)
@@ -359,18 +370,27 @@ tune.wflow <- function(wf, sampler_params = NULL, file = NULL, ...) {
 #' Convenience wrapper: prior predictive (optional) -> posterior fit ->
 #' diagnostics -> inference.
 #'
-#' @param wf                   a `wflow` with data attached
+#' @param wf                   a `wflow` with data attached (or a `regimen`)
 #' @param contrasts            contrast object(s) passed to `run_inference()`
 #' @param sampler_params  optional list of sampler overrides for this run
 #' @param posterior_predictive logical; run posterior predictive checks (default TRUE)
 #' @param diagnostic_plot      logical; render traceplots (default FALSE)
 #' @param diagnostic_params    list of parameters for diagnostics (default NULL)
 #' @param file                 optional file path to save the `wflow` object after running
+#' @param summary_fn           aggregation function passed to `infer_contrasts()` (default `mean`)
+#' @param prob                 HPDI width passed to `infer_contrasts()` (default 0.95)
+#' @param draws_method         `"descriptive"` or `"counterfactual"` (default), passed to `infer_contrasts()`
+#' @param gq_steps             grid resolution for counterfactual sweeps (default 5)
+#' @param summary_fn           aggregation function passed to `infer_contrasts()` (default `mean`)
+#' @param prob                 HPDI width passed to `infer_contrasts()` (default 0.95)
+#' @param draws_method         `"descriptive"` or `"counterfactual"` (default), passed to `infer_contrasts()`
+#' @param gq_steps             grid resolution for counterfactual sweeps (default 5)
 #' @param ...                  forwarded to `run_inference()`
 #' @return the fully-populated `wflow`
 #' @export
 run <- function(wf, ...) UseMethod("run")
 
+#' @rdname run
 #' @exportS3Method
 run.wflow <- function(wf,
                       contrasts,

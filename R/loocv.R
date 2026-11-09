@@ -213,6 +213,7 @@ print.loo_results <- function(x, plot = FALSE, ...) {
 #' @param plot logical; render Pareto-k plot. Default FALSE.
 #' @param r_eff logical; compute relative ESS correction for MCMC draws
 #'   (recommended; improves Pareto-k accuracy). Default TRUE.
+#' @param ... additional arguments passed to methods
 #' @return invisibly, a named list:
 #'   \describe{
 #'     \item{`loo`}{raw `loo` object from `loo::loo()`}
@@ -231,6 +232,7 @@ print.loo_results <- function(x, plot = FALSE, ...) {
 #' @export
 loo_cv <- function(x, ...) UseMethod("loo_cv")
 
+#' @rdname loo_cv
 #' @exportS3Method
 loo_cv.stanmodel <- function(x,
                               moment_matching = FALSE,

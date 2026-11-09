@@ -2,12 +2,17 @@
 % Please edit documentation in R/loocv.R
 \name{loo_cv}
 \alias{loo_cv}
+\alias{loo_cv.stanmodel}
 \title{LOO-CV diagnostics for a fitted stanmodel}
 \usage{
 loo_cv(x, ...)
+
+\method{loo_cv}{stanmodel}(x, moment_matching = FALSE, plot = FALSE, r_eff = TRUE, ...)
 }
 \arguments{
 \item{x}{a fitted \code{stanmodel} object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{moment_matching}{logical; apply moment matching for k > 0.7 obs
 (requires \code{loo} >= 2.4.0). Gelman Sec. 7 recommends this before discarding

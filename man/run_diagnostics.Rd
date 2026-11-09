@@ -2,12 +2,17 @@
 % Please edit documentation in R/wflow.R
 \name{run_diagnostics}
 \alias{run_diagnostics}
+\alias{run_diagnostics.wflow}
 \title{Run convergence diagnostics on the posterior fit}
 \usage{
 run_diagnostics(wf, ...)
+
+\method{run_diagnostics}{wflow}(wf, params = NULL, plot = FALSE, ...)
 }
 \arguments{
 \item{wf}{a \code{wflow} with \verb{$post_fit} populated}
+
+\item{...}{additional arguments passed to methods}
 
 \item{params}{character vector of parameter names; NULL uses the params
 loaded from \code{diagnostics_params.csv} (or all non-yrep params if absent)}

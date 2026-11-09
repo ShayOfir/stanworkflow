@@ -2,12 +2,30 @@
 % Please edit documentation in R/stanmodels.R
 \name{ppc_scenarios}
 \alias{ppc_scenarios}
+\alias{ppc_scenarios.stanmodel}
 \title{Scenario analysis from posterior parameter draws}
 \usage{
 ppc_scenarios(x, ...)
+
+\method{ppc_scenarios}{stanmodel}(
+  x,
+  parameter,
+  factors,
+  scenario_factor,
+  scenario_levels = NULL,
+  scenario_labels = NULL,
+  effect_positive = TRUE,
+  plot = FALSE,
+  facet_formula = NULL,
+  multiple_plots = NULL,
+  title = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{a fitted \code{stanmodel} object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{parameter}{character; name of the Stan parameter to extract (e.g. "beta")}
 
@@ -34,6 +52,8 @@ negative values count as an effect (default TRUE)}
 \item{facet_formula}{formula or NULL; passed to \code{.plot_2way_scenarios()} for faceting
 (e.g. \code{~ finger}). If NULL and one grouping variable exists,
 a formula is constructed automatically.}
+
+\item{multiple_plots}{optional character; name of a factor in \code{factors} to draw one plot per level of (default NULL)}
 
 \item{title}{optional character; plot title}
 }

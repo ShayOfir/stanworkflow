@@ -2,12 +2,17 @@
 % Please edit documentation in R/stanmodels.R
 \name{ppc_by_parameter}
 \alias{ppc_by_parameter}
+\alias{ppc_by_parameter.stanmodel}
 \title{Extract posterior draws for a specific parameter, attaching factor labels}
 \usage{
 ppc_by_parameter(x, ...)
+
+\method{ppc_by_parameter}{stanmodel}(x, parameter, factors, .widen_factor = NULL, ...)
 }
 \arguments{
 \item{x}{a fitted \code{stanmodel} object}
+
+\item{...}{additional arguments passed to methods}
 
 \item{parameter}{the name of the parameter to extract (e.g. "beta")}
 

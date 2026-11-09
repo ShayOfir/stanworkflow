@@ -3,26 +3,27 @@
 \name{tune}
 \alias{tune}
 \alias{tune.regimen}
+\alias{tune.wflow}
 \title{Run prior predictive checks for a regimen}
 \usage{
-tune(wf, sampler_params = NULL, file = NULL, ...)
+tune(wf, ...)
 
 \method{tune}{regimen}(wf, save = TRUE, ...)
 
-tune(wf, sampler_params = NULL, file = NULL, ...)
+tune(wf, ...)
+
+\method{tune}{wflow}(wf, sampler_params = NULL, file = NULL, ...)
 }
 \arguments{
-\item{wf}{a \code{wflow} with data attached via \code{attach_data()}}
-
-\item{sampler_params}{a \code{sampler_params} object, containing the parameters for the prior predictive sampling}
-
-\item{file}{optional file path to save the \code{wflow} object after tuning}
+\item{wf}{a \code{wflow} with data attached via \code{attach_data()} (or a \code{regimen})}
 
 \item{...}{additional arguments passed to \code{ppc.stanmodel()}.}
 
 \item{save}{logical; if \code{TRUE} (default), saves the wflow to \verb{$paths$prior}}
 
-\item{x}{a \code{regimen} with \verb{$status$prepared = TRUE}}
+\item{sampler_params}{a \code{sampler_params} object, containing the parameters for the prior predictive sampling}
+
+\item{file}{optional file path to save the \code{wflow} object after tuning}
 }
 \value{
 the \code{regimen} with \verb{$wf$prior_fit} populated and \verb{$status$tuned = TRUE}

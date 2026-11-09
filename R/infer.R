@@ -136,6 +136,7 @@ print.outcome_spec_hurdle <- function(x, ...) {
 #'   Requires `continuous = FALSE`. Default NULL.
 #' @param two_way_levels optional character vector of exactly 2 levels from `two_way`
 #'   variable to use as the two outcomes. If NULL, uses first 2 levels automatically.
+#' @param outcome optional outcome specification (e.g. from `os_marginal()`); NULL (default) uses the y_rep draws
 #' @return an object of class `contrast`
 #' @export
 # ---- contrast() validation: remove the continuous + two_way guard ----------
@@ -1257,6 +1258,10 @@ print.inference <- function(x, ...) {
 #' @param model        a fitted `stanmodel` object
 #' @param contrasts    a single `contrast` object or a list of `contrast` objects
 #' @param data         data frame used for fitting; if `NULL` uses `model$data` (default NULL)
+#' @param extra         optional named list of additional Stan data passed to `get_stan_data()` (default NULL)
+#' @param numeric_arrays optional character vector (or named list of column subsets) naming numeric array variables used by continuous contrasts (default NULL)
+#' @param extra         optional named list of additional Stan data passed to `get_stan_data()` (default NULL)
+#' @param numeric_arrays optional character vector (or named list of column subsets) naming numeric array variables used by continuous contrasts (default NULL)
 #' @param summary_fn   function to aggregate y within each draw x condition cell (default `mean`)
 #' @param prob         HPDI width for credible intervals (default 0.95)
 #' @param plot         logical; if TRUE, render diagnostic plots (default FALSE)

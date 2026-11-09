@@ -2,20 +2,21 @@
 % Please edit documentation in R/wflow.R
 \name{run_predictive_checks}
 \alias{run_predictive_checks}
+\alias{run_predictive_checks.wflow}
 \title{Run predictive checks}
 \usage{
 run_predictive_checks(wf, ...)
+
+\method{run_predictive_checks}{wflow}(wf, prior_predictive = TRUE, sampler_params = NULL, ...)
 }
 \arguments{
 \item{wf}{a \code{wflow} with data attached via \code{attach_data()}}
 
-\item{...}{additional arguments passed to \code{ppc.stanmodel()}. Ignored if \code{ppc = FALSE}.}
+\item{...}{additional arguments passed to \code{ppc.stanmodel()}.}
 
 \item{prior_predictive}{logical; run prior predictive checks (default TRUE)}
 
 \item{sampler_params}{a \code{sampler_params} object, containing the parameters for the prior predictive sampling}
-
-\item{ppc}{logical; run \code{ppc()} on the prior fit (default FALSE)}
 }
 \value{
 the \code{wflow} with \verb{$prior_fit} populated
