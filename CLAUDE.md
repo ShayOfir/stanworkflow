@@ -238,8 +238,8 @@ graded plan for the modelling work that follows.
   `<name>-<chunk>-<n>.png`; commit all three. `R CMD build`/CI only render the stored
   markdown (no Stan; `.orig` is in `.Rbuildignore`). Rendering needs pandoc (CI:
   `r-lib/actions/setup-pandoc`; locally set `RSTUDIO_PANDOC` to Quarto's `bin/tools` if
-  `rmarkdown::pandoc_available()` is FALSE). Knit times: stanworkflow ~3 min,
-  contrasts ~3 min, hurdle ~3 min, mep — see `vignettes/mep.Rmd.orig` header.
+  `rmarkdown::pandoc_available()` is FALSE). Knit times (alone / under load): stanworkflow
+  3 / 7 min, contrasts 2.5 / 10 min, hurdle 2.5 / 5 min, mep ~28 min (MEP fit ~20 min).
 - Contrasts vignette references live in `vignettes/references.bib`.
 - Dataset `mep_io` (`data/`, documented in `R/data.R`) is built by `data-raw/mep_io.R`
   from the public ShayOfir/MEP_IOcurve CSV; the ported model is

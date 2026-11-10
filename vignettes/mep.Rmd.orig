@@ -1,0 +1,283 @@
+---
+title: "Showcase: sigmoid MEP input-output curves"
+output: rmarkdown::html_vignette
+bibliography: references.bib
+vignette: >
+  %\VignetteIndexEntry{Showcase: sigmoid MEP input-output curves}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "mep-",
+                      fig.width = 7, fig.height = 4.5, dpi = 80)
+t_start <- Sys.time()
+```
+
+> Precomputed with CmdStan; source: `vignettes/mep.Rmd.orig`. The posterior
+> fit takes several minutes, the counterfactual sweeps a few more.
+
+Transcranial magnetic stimulation (TMS) of the motor cortex evokes a muscle
+response, the motor evoked potential (MEP). Its amplitude grows with
+stimulation intensity along a sigmoid *input-output curve*, described by a
+threshold $\theta$ (intensity at half the maximal response), a slope $s$ and a
+plateau $A$. @wondermanbarsela2026mep compared three TMS coils (Figure-of-8,
+H7 and a multidirectional rotational-field array, "rf") in 10 healthy adults
+with a hierarchical Bayesian sigmoid model. The data and the original model are
+public (<https://github.com/ShayOfir/MEP_IOcurve>); the data ship with
+stanworkflow as `mep_io`, and the model, renamed to stanworkflow's data
+conventions, as `inst/stan/mep_sigmoid`.
+
+The model is non-linear in intensity and its coil effects act on $\theta$,
+$s$ and $\log A$, not on the MEP itself. It is the kind of model where reading
+a parameter and asking a counterfactual question give different answers.
+
+```{r setup, message = FALSE}
+library(stanworkflow)
+library(dplyr)
+```
+
+## Data
+
+```{r data}
+head(mep_io)
+table(mep_io$coil, mep_io$side)
+mep_io |> group_by(coil) |> summarise(min = min(intensity), max = max(intensity))
+```
+
+`intensity` is in % of maximal stimulator output (MSO). Each coil was used
+from about 90% to 150% of each subject's resting motor threshold, which for
+the rf coil is far lower than for the others.
+
+```{r data-plot, echo = FALSE}
+ggplot2::ggplot(mep_io, ggplot2::aes(intensity, y, colour = side)) +
+  ggplot2::geom_point(alpha = 0.3, size = 0.8) +
+  ggplot2::facet_wrap(~ coil) +
+  ggplot2::scale_y_log10() +
+  ggplot2::labs(x = "intensity (% MSO)", y = "MEP amplitude (mV, log scale)") +
+  ggplot2::theme_bw()
+```
+
+## Model
+
+$$
+\begin{aligned}
+y_n &\sim \operatorname{LogNormal}(\log \mu_n, \sigma), \qquad
+\mu_n = \frac{A_{ijk}}{1 + \exp\{-s_{ijk}(I_n - \theta_{ijk})\}} \\
+\phi_{ijk} &= \beta_\phi + \delta^{\text{coil}}_{\phi,j} + \delta^{\text{side}}_{\phi,k} + \tau_\phi z_{\phi,i},
+\qquad \phi \in \{\theta, s, \log A\}
+\end{aligned}
+$$
+
+for subject $i$, coil $j$, side $k$, with sum-to-zero coil and side effects and
+non-centred subject effects. Observations above a coil's maximal output cannot
+exist (missing not at random); the likelihood is restricted to the attainable
+range. The Stan code follows stanworkflow's naming convention (`subj_id`,
+`coil_id`, `side_id`, `intensity`, `y`, `prior_*`, `skip_likelihood`); its
+generated quantities hold the curve `mu_rep` (the median MEP) and `y_rep`.
+
+```{r model}
+models <- file.path(tempdir(), "models")
+dir.create(models, showWarnings = FALSE)
+file.copy(system.file("stan", "mep_sigmoid", package = "stanworkflow"), models,
+          recursive = TRUE)
+cat(readLines(file.path(models, "mep_sigmoid", "model_code.stan")), sep = "\n")
+read.csv(file.path(models, "mep_sigmoid", "priors.csv"))
+```
+
+The maximal output of each coil (`mso_limit`, not a data column) goes in
+`extra`:
+
+```{r regimen}
+reg <- regimen(
+  "mep_sigmoid",
+  data_list     = list(data  = mep_io,
+                       extra = list(mso_limit = c(fig8 = 1670, h7 = 1700, rf = 1700) / 17)),
+  models_folder = models,
+  results_path  = file.path(tempdir(), "results_mep"),
+  ppc_by        = "coil",
+  prior_sampler_params = list(chains = 4, parallel_chains = 4, iter_warmup = 250,
+                              iter_sampling = 250, refresh = 0, show_messages = FALSE),
+  post_sampler_params  = list(chains = 4, parallel_chains = 4, iter_warmup = 500,
+                              iter_sampling = 500, adapt_delta = 0.95,
+                              max_treedepth = 12, refresh = 0, show_messages = FALSE,
+                              seed = 2026)
+)
+```
+
+```{r run, message = FALSE, warning = FALSE, results = "hide", fig.show = "hide"}
+t_fit <- system.time(reg <- run(reg, steps = c("prepare", "tune", "fit")))
+```
+
+`run()` draws the prior and posterior predictive checks per coil (hidden here:
+on the raw mV scale the lognormal tails squash the densities). The three steps
+took `r round(t_fit[["elapsed"]] / 60)` minutes; the diagnostics:
+
+```{r diag}
+fit <- reg$wf$post_fit
+fit$fitted_model$diagnostic_summary()
+reg$wf$diagnostics |>
+  filter(grepl("^(mu_|sigma|delta_.*_coil)", variable)) |>
+  select(variable, median, q5, q95, rhat, ess_bulk)
+reg$wf$posterior_ppc_results$y$summary
+```
+
+The port reproduces the published fit (e.g. population threshold
+$\beta_\theta \approx 67$ % MSO and residual $\sigma \approx 1.16$ in both).
+The predictive check flags what a residual SD of 1.16 on the log scale means:
+replicated medians and robust spreads are off ($p_B$ near 0 or 1), although
+the 50% and 90% intervals cover about the nominal share of observations. This
+vignette demonstrates the workflow and the contrasts, not a re-analysis. The
+stored draws work with any bayesplot function, e.g. the posterior predictive
+check on the log scale:
+
+```{r ppc-log, fig.height = 3.5}
+yrep <- posterior::as_draws_matrix(posterior::subset_draws(fit$draws, "y_rep"))
+bayesplot::ppc_dens_overlay_grouped(log(mep_io$y), log(yrep[1:50, ]), group = mep_io$coil) +
+  ggplot2::labs(x = "log MEP amplitude (log mV)")
+```
+
+The observed log amplitudes are bimodal: a cluster near 0.02 mV (no response
+above the recording noise floor) and the recruited responses. A single
+lognormal cannot reproduce both, which is what the $p_B$ values above flag; a
+hurdle or mixture likelihood (`vignette("hurdle")`) would be the next model
+to try.
+
+
+## Parameter route: what the coils do to the curve
+
+The coil effects are parameters of the curve. Differences between coils, draw
+by draw, for each curve parameter:
+
+```{r par, results = "hide", fig.show = "hide"}
+par_coil <- function(p, link = "identity")
+  infer_contrasts(fit, contrast("coil", parameter = p, factors = "coil", link = link),
+                  draws_method = "parameter")
+r_theta <- par_coil("delta_theta_coil")
+r_slope <- par_coil("delta_slope_coil")
+r_logA  <- par_coil("delta_logA_coil", link = "log")
+```
+
+```{r par-show}
+bind_rows(theta = r_theta$summary, slope = r_slope$summary, logA = r_logA$summary,
+          .id = "parameter") |>
+  select(parameter, contrast_label, median, hpdi_lo, hpdi_hi, pd)
+```
+
+The coils differ little in threshold (rf − Figure-of-8:
+`r round(r_theta$summary$median[2], 1)` % MSO; the priors allow the coil
+effects on $\theta$ only a few tenths of a percent), and clearly in slope (rf
+shallower) and plateau (rf higher by a factor of about
+`r round(exp(r_logA$summary$median[2]), 1)`; `delta_logA_coil` is on the log scale, declared with
+`link = "log"`, hence the message). The per-subject curves `theta[subj, coil, side]` give a
+mean threshold per coil, averaged over subjects and sides with data weights
+(`grouping_vars = "coil"`, `weights = "data"`; the missing S01 Figure-of-8
+right curve gets weight 0):
+
+```{r par-avg, results = "hide", fig.show = "hide"}
+r_theta_avg <- infer_contrasts(fit, contrast("coil", grouping_vars = "coil",
+                                             weights = "data", parameter = "theta",
+                                             factors = c("subj", "coil", "side")),
+                               draws_method = "parameter")
+```
+
+```{r par-avg-show}
+r_theta_avg$level_summary
+r_theta_avg$scale
+```
+
+These are statements about the *curve*: where it rises, how steeply, how high
+it ends. They do not say how large the MEP is at a given intensity.
+
+## Counterfactual route: what the coils do to the MEP
+
+"How would the MEP change if the same stimulation were delivered with another
+coil?" is a counterfactual question on the outcome scale. For every observed
+row, set the coil, keep subject, side and intensity, compute the expected
+curve `mu_rep`, and average the difference over rows:
+
+```{r cf-coil, results = "hide", message = FALSE, fig.show = "hide"}
+co_coil <- function(levels) contrast("coil", contrast_levels = levels,
+                                     outcome = outcome_spec(gq_var = "mu_rep"))
+r_cf <- infer_contrasts(fit, list(co_coil(c("fig8", "rf")), co_coil(c("h7", "rf")),
+                                  co_coil(c("fig8", "h7"))),
+                        draws_method = "counterfactual", gq_n_draws = 1000)
+```
+
+```{r cf-coil-show}
+bind_rows(lapply(r_cf, `[[`, "summary"))
+```
+
+The answer depends on where the comparison is made. Evaluating the same
+contrast with every row's intensity set to a fixed value shows how the coil
+difference changes along the intensity axis:
+
+```{r cf-int, results = "hide", message = FALSE, fig.show = "hide"}
+intensities <- c(30, 40, 50, 60, 70, 80)
+r_int <- lapply(intensities, function(i)
+  infer_contrasts(fit, co_coil(c("fig8", "rf")),
+                  data = mutate(mep_io, intensity = i),
+                  draws_method = "counterfactual", gq_n_draws = 1000)$summary)
+```
+
+```{r cf-int-show}
+bind_rows(r_int) |> mutate(intensity = intensities, .before = 1)
+```
+
+```{r cf-int-plot, echo = FALSE, fig.height = 3.5}
+bind_rows(r_int) |> mutate(intensity = intensities) |>
+  ggplot2::ggplot(ggplot2::aes(intensity, mean)) +
+  ggplot2::geom_hline(yintercept = 0, linetype = "dashed") +
+  ggplot2::geom_ribbon(ggplot2::aes(ymin = lo, ymax = hi), alpha = 0.2) +
+  ggplot2::geom_line() +
+  ggplot2::labs(x = "intensity (% MSO), all rows",
+                y = "rf - Figure-of-8 (mV)") +
+  ggplot2::theme_bw()
+```
+
+## Parameter vs counterfactual
+
+Which coil evokes the larger MEP at a given intensity? None of the three
+parameter contrasts answers that on its own: a shallower slope lowers the
+curve below its midpoint, a higher plateau raises it everywhere, and how the
+two combine depends on the intensity. The parameter route says "almost the
+same threshold, shallower, higher"; the counterfactual route says "rf evokes
+MEPs larger by
+`r round(r_int[[1]]$mean, 2)` mV at `r intensities[1]` % MSO and by
+`r round(r_int[[length(r_int)]]$mean, 2)` mV at `r tail(intensities, 1)` % MSO".
+The averaged counterfactual contrast above (`r round(r_cf[[1]]$summary$mean, 2)`
+mV) is one point on that curve, weighted by the intensities that happened to
+be tested. On a linear model with an identity link the routes coincide
+(`vignette("contrasts")`); on a sigmoid they answer different questions, and
+the counterfactual one is usually the question asked.
+
+The same holds for intensity itself. In a linear model the effect of raising
+intensity by $\Delta$ is slope $\times\,\Delta$ wherever it is applied
+(`vignette("contrasts")`); on a sigmoid it is not. The counterfactual route
+sweeps intensity over its observed range, per coil:
+
+```{r cf-sweep, results = "hide", message = FALSE, fig.show = "hide"}
+r_sweep <- infer_contrasts(fit, contrast("intensity", continuous = TRUE,
+                                         grouping_vars = "coil",
+                                         outcome = outcome_spec(gq_var = "mu_rep")),
+                           draws_method = "counterfactual", gq_steps = 6,
+                           gq_n_draws = 1000)
+```
+
+```{r cf-sweep-show}
+r_sweep$grid_summary |> select(coil, intensity = contrast_var_value, mean, lo, hi)
+```
+
+The gain from each equal step in intensity rises and then falls as the curves
+approach their plateaus, differently per coil: no single slope $\times\,\Delta$
+describes it, and the parameter `slope` is the steepness of the logistic, not
+the change in MEP per % MSO. For non-linear models, contrasts on the outcome
+scale need the counterfactual route on an expectation (`mu_rep`).
+
+```{r timing, include = FALSE}
+t_total <- difftime(Sys.time(), t_start, units = "mins")
+```
+
+*Knitting this vignette took `r round(as.numeric(t_total))` minutes.*
+
+## References

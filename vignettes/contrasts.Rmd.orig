@@ -323,8 +323,8 @@ curve each row sits, and the change accumulates unevenly across the grid. On a
 non-linear model, the parameter answers a question on the link scale and the
 counterfactual route is the one that answers it on the outcome scale
 [@gelman2007apc; @mcelreath2020rethinking, ch. 10–11]. `vignette("mep")`
-shows the same on a sigmoid recruitment curve, where even the sign of the
-coil comparison depends on the stimulation intensity.
+shows the same on a sigmoid recruitment curve, where the coil comparison on
+the MEP grows several-fold with stimulation intensity.
 
 ## Two-way scenarios
 
