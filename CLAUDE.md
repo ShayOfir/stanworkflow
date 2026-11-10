@@ -239,13 +239,13 @@ graded plan for the modelling work that follows.
   markdown (no Stan; `.orig` is in `.Rbuildignore`). Rendering needs pandoc (CI:
   `r-lib/actions/setup-pandoc`; locally set `RSTUDIO_PANDOC` to Quarto's `bin/tools` if
   `rmarkdown::pandoc_available()` is FALSE). Knit times (alone / under load): stanworkflow
-  3 / 7 min, contrasts 2.5 / 10 min, hurdle 2.5 / 5 min, mep ~28 min (MEP fit ~20 min).
+  3 / 7 min, contrasts 2.5 / 10 min, hurdle 2.5 / 5 min.
 - Contrasts vignette references live in `vignettes/references.bib`.
-- Dataset `mep_io` (`data/`, documented in `R/data.R`) is built by `data-raw/mep_io.R`
-  from the public ShayOfir/MEP_IOcurve CSV; the ported model is
-  `inst/stan/mep_sigmoid/{model_code.stan,priors.csv}` (copy it to a writable folder before
-  compiling: cmdstanr writes the executable next to the `.stan` file).
-- Citation: `inst/CITATION`, `CITATION.cff`, `.zenodo.json` (affiliation TODO). Keep the
+- MEP showcase (vignette, `mep_io` dataset, `inst/stan/mep_sigmoid`) was removed before
+  v0.1.0 because the published model's priors need revisiting (coil theta prior sd 0.3 % MSO,
+  sigma_theta capped at 2, no noise floor). It is kept on local branch `mep-showcase`
+  (0cbab61); planned to return with a revised model (M7 / v0.2.0).
+- Citation: `inst/CITATION`, `CITATION.cff`, `.zenodo.json`. Keep the
   version in `CITATION.cff` in step with DESCRIPTION. Releases/tags are made by the user.
 
 ## Dev note: Windows Defender and CmdStan

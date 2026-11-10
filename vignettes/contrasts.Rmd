@@ -401,9 +401,7 @@ percentage points, for these participants. Their ratio is not constant: it depen
 curve each row sits, and the change accumulates unevenly across the grid. On a
 non-linear model, the parameter answers a question on the link scale and the
 counterfactual route is the one that answers it on the outcome scale
-[@gelman2007apc; @mcelreath2020rethinking, ch. 10–11]. `vignette("mep")`
-shows the same on a sigmoid recruitment curve, where the coil comparison on
-the MEP grows several-fold with stimulation intensity.
+[@gelman2007apc; @mcelreath2020rethinking, ch. 10–11].
 
 ## Two-way scenarios
 

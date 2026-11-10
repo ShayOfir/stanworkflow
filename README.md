@@ -66,8 +66,6 @@ get_inference(reg, "x")
 - `vignette("contrasts")` — descriptive, counterfactual and parameter
   contrasts; why to contrast expectations (`mu_rep`) rather than replicates
   (`y_rep`); the linear identity; `delta`; averaging with `weights`.
-- `vignette("mep")` — a non-linear showcase: hierarchical sigmoid MEP
-  input-output curves (dataset `mep_io`).
 - `vignette("hurdle")` — hurdle outcomes with `outcome_spec()`.
 
 The vignettes are precomputed (building them does not need CmdStan); their
@@ -83,6 +81,4 @@ See also [`CITATION.cff`](CITATION.cff).
 
 ## Licence
 
-GPL (>= 3). The `mep_io` dataset is from
-[ShayOfir/MEP_IOcurve](https://github.com/ShayOfir/MEP_IOcurve)
-(Wonderman Bar Sela et al. 2026, *PLOS ONE* 21(2): e0343725).
+GPL (>= 3).
