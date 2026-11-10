@@ -1,0 +1,236 @@
+---
+title: "Getting started with stanworkflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with stanworkflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "stanworkflow-",
+                      fig.width = 7, fig.height = 4.5, dpi = 80)
+```
+
+> This vignette was run with CmdStan on the maintainer's machine; its output is
+> stored, so building it does not need Stan. The source is
+> `vignettes/stanworkflow.Rmd.orig` (re-run with `data-raw/vignettes.R`).
+
+stanworkflow takes a Stan model you wrote yourself and runs the usual Bayesian
+workflow around it: compile, prior predictive check, fit, convergence
+diagnostics, posterior predictive check and posterior contrasts. Each step
+saves its result to disk, so an interrupted analysis resumes where it stopped.
+
+This vignette walks through one analysis on simulated data.
+
+```{r setup}
+library(stanworkflow)
+```
+
+## Data
+
+A hundred patients and a hundred controls; the outcome `y` rises with a covariate `x`
+(say, a standardised score), more steeply in patients.
+
+```{r data}
+set.seed(2026)
+d <- data.frame(group = factor(rep(c("control", "patient"), each = 100),
+                               levels = c("control", "patient")),
+                x     = runif(200))
+d$y <- ifelse(d$group == "control", 0.5 + 1.0 * d$x, 0.0 + 2.0 * d$x) + rnorm(200, sd = 0.4)
+head(d)
+```
+
+## The model folder
+
+A model lives in a folder `models/<name>/` holding `model_code.stan` and
+`priors.csv`. stanworkflow fills the Stan `data` block **by name** from the
+data frame:
+
+| Stan declaration | Filled with |
+|---|---|
+| `N` | `nrow(data)` |
+| `n_<col>` | number of distinct values of `<col>` |
+| `<col>_id` | `as.integer(factor(data$<col>))` (factor level order) |
+| `<col>` | `data$<col>` |
+| `prior_*` | the value in `priors.csv` |
+| anything else | `data_list$extra` |
+
+Every model declares `int<lower=0, upper=1> skip_likelihood` and gates its
+likelihood on it, so the same code samples the prior predictive distribution.
+The generated quantities hold `y_rep` (a replicate of the data, for predictive
+checks) and `mu_rep` (the expected value, for contrasts; see
+`vignette("contrasts")`).
+
+```{r model}
+model_code <- "
+data {
+  int<lower=1> N;
+  int<lower=1> n_group;
+  array[N] int<lower=1, upper=n_group> group_id;
+  vector[N] x;
+  vector[N] y;
+  real<lower=0> prior_b_sd;
+  int<lower=0, upper=1> skip_likelihood;
+}
+parameters {
+  vector[n_group] a;
+  vector[n_group] b;
+  real<lower=0> sigma;
+}
+model {
+  a ~ normal(0, 1);
+  b ~ normal(0, prior_b_sd);
+  sigma ~ exponential(1);
+  if (!skip_likelihood) y ~ normal(a[group_id] + b[group_id] .* x, sigma);
+}
+generated quantities {
+  vector[N] mu_rep = a[group_id] + b[group_id] .* x;
+  array[N] real y_rep = normal_rng(mu_rep, sigma);
+}
+"
+models <- file.path(tempdir(), "models")
+dir.create(file.path(models, "lin"), recursive = TRUE, showWarnings = FALSE)
+writeLines(model_code, file.path(models, "lin", "model_code.stan"))
+write.csv(data.frame(prior = "prior_b_sd", value = 2),
+          file.path(models, "lin", "priors.csv"), row.names = FALSE)
+```
+
+## Declare the analysis: `regimen()`
+
+A `regimen` declares everything once: the model, the data, the contrasts to
+report, where to save results and the sampler settings.
+
+```{r regimen}
+reg <- regimen(
+  model_name    = "lin",
+  data_list     = list(data = d),
+  models_folder = models,
+  results_path  = file.path(tempdir(), "results"),
+  ppc_by        = "group",
+  contrasts     = list(
+    # patients minus controls, on the expected outcome, averaged over the data
+    group = contrast("group", contrast_levels = c("control", "patient"),
+                     outcome = outcome_spec(gq_var = "mu_rep")),
+    # effect of moving x across its range, per group
+    x     = contrast("x", continuous = TRUE, grouping_vars = "group",
+                     outcome = outcome_spec(gq_var = "mu_rep"))
+  ),
+  draws_method  = "counterfactual",
+  prior_sampler_params = list(iter_warmup = 300, iter_sampling = 300, refresh = 0,
+                              show_messages = FALSE),
+  post_sampler_params  = list(iter_warmup = 500, iter_sampling = 500, refresh = 0,
+                              show_messages = FALSE, seed = 1)
+)
+reg
+```
+
+## Run it
+
+`run()` executes the steps you ask for: `prepare` (compile and attach data),
+`tune` (prior predictive), `fit` (posterior, posterior predictive checks,
+diagnostics) and `infer` (the contrasts). Each step writes a checkpoint to
+`results_path`.
+
+```{r run, message = FALSE, warning = FALSE, results = "hide"}
+reg <- run(reg, steps = c("prepare", "tune", "fit", "infer"))
+```
+
+`run()` reports as it goes (CmdStan progress, predictive-check tables and
+plots; the text is hidden here). The plots above are, in order, the prior
+predictive check (`tune`) and the posterior predictive check (`fit`), each as
+density overlays and a mean-SD scatter per `ppc_by` group. Under the priors
+alone, simulated data should cover the observed data without being absurd; if
+not, edit `priors.csv` and run `tune` again. `fit()` warns that the model is
+not marked as tuned until you accept the priors with `set_as_tuned()`; the
+warning is hidden here.
+
+The predictive checks are stored with numeric summaries: Bayesian p-values of
+summary statistics and the coverage of the 50% and 90% predictive intervals,
+per group.
+
+```{r ppc}
+reg$wf$posterior_ppc_results$y$summary
+```
+
+`regimen` keeps the underlying objects: `reg$wf` is the `wflow` (one model's
+lifecycle), and `reg$wf$post_fit` is the fitted `stanmodel`, which carries the
+draws.
+
+```{r diag}
+reg$wf$diagnostics
+```
+
+## Results
+
+```{r infer}
+reg$status
+get_inference(reg, "group")
+get_inference(reg, "x")
+```
+
+The group contrast is the patient-minus-control difference in the expected
+outcome, averaged over the observed `x` values; the `x` contrast is the change
+in the expected outcome from the lowest to the highest observed `x`, per group
+(the simulated truths are 1.0 and 2.0).
+
+## Resuming
+
+The checkpoints live in `results_path`:
+
+```{r files}
+basename(unlist(reg$paths))
+```
+
+After a crash or in a new session, `resume()` checks which files exist and
+runs only what is missing. To add a contrast later, `update_contrasts()` resets
+only the inference step, and `infer` reloads the fitted posterior from disk
+instead of refitting:
+
+```{r resume, message = FALSE, results = "hide"}
+reg <- update_contrasts(reg, list(
+  both = contrast("x", continuous = TRUE, two_way = "group",
+                  outcome = outcome_spec(gq_var = "mu_rep"))))
+reg <- run(reg, steps = "infer")
+```
+
+```{r both}
+get_inference(reg, "both")
+```
+
+A `two_way` contrast classifies each posterior draw by the sign of the effect
+in both groups ("affects both", "affects one only", "affects neither") and
+reports the share of draws in each scenario.
+
+For a model that is linear in `x`, the same slope can be read straight from the
+parameter draws, without any `generate_quantities()` call:
+
+```{r parameter}
+infer_contrasts(reg$wf$post_fit,
+                contrast("x", continuous = TRUE, parameter = "b",
+                         factors = "group", delta = "range"),
+                draws_method = "parameter")
+```
+
+`b` scaled to the range of `x` equals the counterfactual `x` contrast above,
+draw by draw. `vignette("contrasts")` explains when the routes agree and when
+they do not.
+
+## Lower-level layers
+
+`regimen` sits on two layers you can also use directly:
+
+- `wflow()` — one model's lifecycle (`attach_data()`, `tune()`,
+  `fit_posterior()`, `run_diagnostics()`, `run_inference()`).
+- `stanmodel()` — a thin `cmdstanr` wrapper (`compile_from_file()`,
+  `get_stan_data()`, `fit()`, `gq()`, `ppc()`, `diagnose()`), and
+  `infer_contrasts()` on a fitted `stanmodel`.
+
+```{r lower, eval = FALSE}
+m <- stanmodel() |> compile_from_file(file.path(models, "lin", "model_code.stan"))
+m$priors$prior_b_sd <- 2
+m <- fit(m, data = d)
+infer_contrasts(m, contrast("group", contrast_levels = c("control", "patient"),
+                            outcome = outcome_spec(gq_var = "mu_rep")),
+                draws_method = "counterfactual")
+```

@@ -1,5 +1,22 @@
 # stanworkflow 0.0.0.9000 (development version)
 
+## Documentation
+
+* README with installation (CmdStan from the Stan r-universe, then
+  `remotes::install_github("ShayOfir/stanworkflow")`), an example and a note
+  on Windows Defender exclusions.
+* Four vignettes: `vignette("stanworkflow")` (getting started),
+  `vignette("contrasts")` (descriptive vs counterfactual vs parameter
+  contrasts, `mu_rep` vs `y_rep`, the linear identity, `delta`, averaging with
+  `weights`), `vignette("mep")` (non-linear showcase) and `vignette("hurdle")`
+  (hurdle outcomes with `outcome_spec()`). They are precomputed with CmdStan
+  (sources `vignettes/*.Rmd.orig`, re-run with `data-raw/vignettes.R`), so
+  building them needs no Stan.
+* New dataset `mep_io`: MEP input-output curves of 10 healthy adults, three
+  TMS coils (Wonderman Bar Sela et al. 2026, PLOS ONE), and the ported model
+  in `system.file("stan", "mep_sigmoid", package = "stanworkflow")`.
+* Citation metadata: `citation("stanworkflow")`, `CITATION.cff`, `.zenodo.json`.
+
 ## Bug fixes
 
 * `fit()` and `gq()` now stop if any CmdStan chain returns a non-zero code.

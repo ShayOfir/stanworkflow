@@ -230,6 +230,24 @@ graded plan for the modelling work that follows.
   `MVNorm_and_mass_univariate_results.xlsx` (sheets `multiv`, `mass_univ`).
 - `dev/simulate.R` — simulation helpers, the starting point for any design/power or SBC work.
 
+## Documentation (vignettes, data, citation)
+
+- Vignettes are **precomputed**: edit `vignettes/<name>.Rmd.orig` (live code, needs CmdStan),
+  then install the package and run `Rscript data-raw/vignettes.R [name ...]` from the root.
+  It knits each `.orig` to `vignettes/<name>.Rmd` (code + stored output) plus
+  `<name>-<chunk>-<n>.png`; commit all three. `R CMD build`/CI only render the stored
+  markdown (no Stan; `.orig` is in `.Rbuildignore`). Rendering needs pandoc (CI:
+  `r-lib/actions/setup-pandoc`; locally set `RSTUDIO_PANDOC` to Quarto's `bin/tools` if
+  `rmarkdown::pandoc_available()` is FALSE). Knit times: stanworkflow ~3 min,
+  contrasts ~3 min, hurdle ~3 min, mep — see `vignettes/mep.Rmd.orig` header.
+- Contrasts vignette references live in `vignettes/references.bib`.
+- Dataset `mep_io` (`data/`, documented in `R/data.R`) is built by `data-raw/mep_io.R`
+  from the public ShayOfir/MEP_IOcurve CSV; the ported model is
+  `inst/stan/mep_sigmoid/{model_code.stan,priors.csv}` (copy it to a writable folder before
+  compiling: cmdstanr writes the executable next to the `.stan` file).
+- Citation: `inst/CITATION`, `CITATION.cff`, `.zenodo.json` (affiliation TODO). Keep the
+  version in `CITATION.cff` in step with DESCRIPTION. Releases/tags are made by the user.
+
 ## Dev note: Windows Defender and CmdStan
 
 Defender can block a freshly compiled `model_code.exe` ("system error 225, file contains a virus")

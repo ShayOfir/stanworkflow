@@ -1,0 +1,178 @@
+---
+title: "Hurdle models with outcome_spec"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Hurdle models with outcome_spec}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "hurdle-",
+                      fig.width = 7, fig.height = 4, dpi = 80)
+```
+
+> Precomputed with CmdStan; source: `vignettes/hurdle.Rmd.orig`.
+
+Some outcomes are zero for a reason of their own: a patient who cannot move a
+finger at all produces an amplitude of exactly 0, not a small positive number.
+A *hurdle* model has two parts: whether there is a response at all (the
+*extensive* margin, $p$), and how large it is when there is one (the
+*intensive* margin, $\mu$). Their product is the overall expected outcome (the
+*marginal* mean, $p\mu$).
+
+"Did the group differ?" then has three answers, one per margin. stanworkflow
+does not ship a hurdle family; you write the model in Stan, expose the three
+quantities in generated quantities under conventional names, and an
+`outcome_spec` tells `infer_contrasts()` which one to use.
+
+| Helper | Generated quantity | Meaning |
+|---|---|---|
+| `os_extensive()` | `p_respond` | $\Pr(y > 0)$ |
+| `os_intensive()` | `mu_y` | $E[y \mid y > 0]$ |
+| `os_marginal()` | `mu_marginal` | $E[y] = p \mu$ |
+| `os_hurdle()` | all three | one call, three results |
+| `outcome_spec(gq_var = )` | any | your own quantity |
+
+```{r setup, message = FALSE}
+library(stanworkflow)
+```
+
+## Simulated data
+
+Patients respond less often as impairment `x` rises, and respond more weakly;
+controls almost always respond.
+
+```{r data}
+set.seed(3)
+n <- 150
+d <- data.frame(group = factor(rep(c("control", "patient"), each = n)),
+                x     = c(runif(n, 0, 0.3), runif(n, 0, 1)))
+patient <- d$group == "patient"
+p  <- plogis(ifelse(patient, 2.5 - 4 * d$x, 3))
+mu <- exp(ifelse(patient, 0.8 - 0.8 * d$x, 1))
+d$y <- ifelse(rbinom(2 * n, 1, p) == 1, rlnorm(2 * n, log(mu) - 0.4^2 / 2, 0.4), 0)
+tapply(d$y == 0, d$group, mean)   # share of zeros
+```
+
+## The model
+
+A logistic part for $p$ and a lognormal part for positive values,
+parameterised so that `mu_y` is the mean, not the median, of the positive
+values. `y_rep` combines both parts for predictive checks.
+
+```{r model, results = "hide", message = FALSE}
+code <- "
+data {
+  int<lower=1> N;
+  int<lower=1> n_group;
+  array[N] int<lower=1, upper=n_group> group_id;
+  vector[N] x;
+  vector<lower=0>[N] y;
+  int<lower=0, upper=1> skip_likelihood;
+}
+parameters {
+  vector[n_group] a_p;
+  vector[n_group] b_p;
+  vector[n_group] a_mu;
+  vector[n_group] b_mu;
+  real<lower=0> sigma;
+}
+transformed parameters {
+  vector[N] logit_p = a_p[group_id] + b_p[group_id] .* x;
+  vector[N] log_mu  = a_mu[group_id] + b_mu[group_id] .* x;
+}
+model {
+  a_p ~ normal(0, 2);  b_p ~ normal(0, 2);
+  a_mu ~ normal(0, 1); b_mu ~ normal(0, 1);
+  sigma ~ exponential(2);
+  if (!skip_likelihood) {
+    for (n in 1:N) {
+      if (y[n] == 0) {
+        target += bernoulli_logit_lpmf(0 | logit_p[n]);
+      } else {
+        target += bernoulli_logit_lpmf(1 | logit_p[n]) +
+                  lognormal_lpdf(y[n] | log_mu[n] - square(sigma) / 2, sigma);
+      }
+    }
+  }
+}
+generated quantities {
+  vector[N] p_respond   = inv_logit(logit_p);
+  vector[N] mu_y        = exp(log_mu);
+  vector[N] mu_marginal = p_respond .* mu_y;
+  vector[N] y_rep;
+  for (n in 1:N)
+    y_rep[n] = bernoulli_rng(p_respond[n]) ? lognormal_rng(log_mu[n] - square(sigma) / 2, sigma) : 0;
+}
+"
+m <- stanmodel() |> compile_from_string(code)
+m$sampler_params <- sampler_params(modifyList(sampler_params(), list(
+  chains = 4, parallel_chains = 4, iter_warmup = 500, iter_sampling = 500,
+  refresh = 0, show_messages = FALSE, seed = 1)))
+m <- fit(m, data = d)
+```
+
+A posterior predictive check on `y_rep` should reproduce both the share of
+zeros and the spread of positive values (`p_B_min` is 1 because the minimum is
+0 in the data and in every replicate):
+
+```{r ppc, results = "hide", message = FALSE}
+chk <- ppc(m, .by = "group")
+```
+
+```{r ppc-show}
+chk$summary
+chk$group_results$patient$plots$density_overlay
+```
+
+## One contrast, three margins
+
+```{r hurdle, results = "hide", message = FALSE, fig.show = "hide"}
+r <- infer_contrasts(m, contrast("group", contrast_levels = c("control", "patient"),
+                                 outcome = os_hurdle()),
+                     draws_method = "counterfactual")
+```
+
+```{r hurdle-show}
+names(r)
+r$extensive$summary
+r$intensive$summary
+r$marginal$summary
+```
+
+Each contrast sets every participant's group to "patient" rather than
+"control", keeps their own impairment `x`, and averages the change in the
+expected outcome over participants. As patients they would respond less often
+*and* more weakly; the marginal difference combines both. Reporting
+only the marginal mean hides which part changed; reporting only the intensive
+margin ignores the patients who did not respond at all. These are
+counterfactual contrasts on expectations, so they need no `y_rep` (see
+`vignette("contrasts")`).
+
+## A continuous predictor, per margin
+
+The effect of impairment `x` among patients, from no to full impairment,
+on each margin:
+
+```{r x, results = "hide", message = FALSE, fig.show = "hide"}
+rx <- infer_contrasts(m, contrast("x", continuous = TRUE, grouping_vars = "group",
+                                  filter_draws = quote(group == "patient"),
+                                  outcome = os_hurdle()),
+                      draws_method = "counterfactual", gq_steps = 2)
+```
+
+```{r x-show}
+lapply(rx[c("extensive", "intensive", "marginal")], function(z) z$grid_summary)
+```
+
+## Your own quantity
+
+Any generated quantity can be the outcome, e.g. the probability of a strong
+response, $\Pr(y > 2)$, if the model adds it to generated quantities; and
+`filter_fn` / `transform_fn` in `outcome_spec()` subset or transform the draws
+before the contrast is taken:
+
+```{r custom, eval = FALSE}
+outcome_spec(gq_var = "mu_y", transform_fn = log, label = "log E[y | y > 0]")
+```

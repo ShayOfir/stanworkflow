@@ -8,3 +8,6 @@ bkups/
 .vscode/
 R/graphify-out/
 tests/testthat/Rplots.pdf
+/doc/
+/Meta/
+inst/doc

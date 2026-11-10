@@ -1,0 +1,17 @@
+prior,value
+prior_mu_theta_mean,50
+prior_mu_theta_sd,10
+prior_mu_slope_mean,0.15
+prior_mu_slope_sd,0.05
+prior_mu_A_mean,1
+prior_mu_A_sd,0.2
+prior_sigma_theta_scale,1
+prior_sigma_slope_scale,0.03
+prior_sigma_A_scale,0.3
+prior_sigma_scale,0.3
+prior_delta_theta_coil_scale,0.3
+prior_delta_theta_side_scale,0.3
+prior_delta_slope_coil_scale,0.3
+prior_delta_slope_side_scale,0.3
+prior_delta_logA_coil_scale,0.1
+prior_delta_logA_side_scale,0.1

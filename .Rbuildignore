@@ -12,3 +12,9 @@
 ^CLAUDE\.md$
 ^LICENSE\.md$
 ^\.github$
+^data-raw$
+^CITATION\.cff$
+^\.zenodo\.json$
+^vignettes/.*\.Rmd\.orig$
+^doc$
+^Meta$

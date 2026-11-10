@@ -1,0 +1,21 @@
+{
+  "title": "stanworkflow: Declarative Bayesian Workflow for Hand-Written Stan Models",
+  "upload_type": "software",
+  "description": "An R package that wraps cmdstanr in a declarative compile, prior predictive, fit, diagnose and infer pipeline for user-written Stan models, with checkpoint/resume and draw-level descriptive, counterfactual and parameter contrasts.",
+  "creators": [
+    {
+      "name": "Ofir-Geva, Shay",
+      "orcid": "0000-0001-7871-2778",
+      "affiliation": "TODO"
+    }
+  ],
+  "license": "GPL-3.0-or-later",
+  "keywords": [
+    "Bayesian workflow",
+    "Stan",
+    "cmdstanr",
+    "R",
+    "counterfactual contrasts",
+    "neuroscience"
+  ]
+}

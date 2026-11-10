@@ -1,0 +1,8 @@
+bibentry(
+  bibtype = "Manual",
+  title   = "{stanworkflow}: Declarative Bayesian Workflow for Hand-Written {Stan} Models",
+  author  = person("Shay", "Ofir-Geva", comment = c(ORCID = "0000-0001-7871-2778")),
+  year    = "2026",
+  note    = paste("R package version", meta$Version),
+  url     = "https://github.com/ShayOfir/stanworkflow"
+)
