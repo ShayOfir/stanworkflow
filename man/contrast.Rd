@@ -18,13 +18,17 @@ contrast(
   parameter = NULL,
   factors = NULL,
   delta = NULL,
-  link = "identity"
+  link = "identity",
+  weights = c("equal", "data")
 )
 }
 \arguments{
 \item{contrast_var}{character scalar -- the variable whose levels are contrasted}
 
-\item{grouping_vars}{character vector of variables to group by}
+\item{grouping_vars}{character vector of variables to group by. With
+\code{draws_method = "parameter"}: the factors (names of \code{factors}) kept as cells;
+the others, apart from a categorical \code{contrast_var} and \code{two_way}, are averaged
+per draw (see \code{weights}). NULL (default) keeps every factor as a cell.}
 
 \item{contrast_levels}{for categorical: length-2 character vector
 c(reference, index); the contrast is \code{index - reference} (second minus first).
@@ -72,6 +76,12 @@ the predictor. The string forms are computed from the data column
 \item{link}{character; the link of the model's linear predictor (default
 \code{"identity"}). The package cannot read it from the Stan code; a non-identity
 link only triggers a message in the parameter route.}
+
+\item{weights}{\code{"equal"} (default) or \code{"data"}: how the parameter route averages
+over the factors not in \code{grouping_vars}. \code{"equal"}: each level counts the same.
+\code{"data"}: each level counts by its number of rows in the data (for several
+averaged factors, by the joint cell counts, within each kept cell); needs the
+averaged factors to be data columns. Parameter route only.}
 }
 \value{
 an object of class \code{contrast}

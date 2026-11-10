@@ -118,8 +118,14 @@ or a number). \code{continuous = FALSE}: \code{contrast_var} must be one of the 
 and the result is the difference between two of its levels (\code{contrast_levels},
 second minus first) or, if \code{contrast_levels} is NULL, between every pair of
 levels. \code{two_way} (another factor) classifies each draw into the four scenarios,
-as \code{\link[=ppc_scenarios]{ppc_scenarios()}} does. \code{grouping_vars} is ignored: every factor other than
-\code{contrast_var} and \code{two_way} is a cell. \code{filter_draws} may refer to the factors.
+as \code{\link[=ppc_scenarios]{ppc_scenarios()}} does. With \code{grouping_vars = NULL} every factor other than
+\code{contrast_var} and \code{two_way} is a cell; otherwise the factors not named in
+\code{grouping_vars} (nor \code{contrast_var} or \code{two_way}) are averaged per draw before
+the summaries, differences and scenarios, with \code{contrast(weights = )} \code{"equal"}
+(each level the same) or \code{"data"} (rows per level; for a linear model this
+reproduces the counterfactual average over rows, draw by draw). The scale label
+says what was averaged. \code{filter_draws} may refer to the factors and is applied
+before averaging.
 For a model linear in \code{contrast_var} with an identity link, parameter times
 \code{delta} equals the counterfactual contrast on an expectation GQ (e.g. \code{mu_rep})
 between two predictor values \code{delta} apart, draw by draw, at a fraction of the

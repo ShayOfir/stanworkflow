@@ -160,6 +160,86 @@ test_that("identity: parameter x range(x) equals the counterfactual mu_rep contr
   expect_lt(max(abs(j$contrast.x - j$contrast.y)), 1e-4)
 })
 
+test_that("averaging over factors: equal and data weights match hand computations", {
+  skip_if_no_cmdstan()
+  m  <- tm_fit()
+  bg <- tm_draws(m, "bg")
+  cell <- function(d, k) bg[[sprintf("bg[%d,%d]", d, k)]]
+  # unbalanced data, so data weights differ from equal weights
+  d  <- tm_data()
+  d  <- d[-which(d$direction == "FLEX" & d$group == "s2")[1:6], ]
+  d  <- d[-which(d$direction == "EXT" & d$group == "c")[1:3], ]
+  n  <- table(d$direction, d$group)      # FLEX/EXT x c/s1/s2
+  bf <- c("direction", "group")
+  ap <- function(co) dplyr::arrange(co$posterior, .draw, direction)
+
+  # NULL grouping_vars: every factor a cell, the same as naming all of them
+  r0 <- par_run(m, contrast("x", continuous = TRUE, parameter = "bg", factors = bf), data = d)
+  expect_identical(r0, par_run(m, contrast("x", continuous = TRUE, grouping_vars = bf,
+                                           parameter = "bg", factors = bf), data = d))
+  expect_equal(nrow(r0$level_summary), 6L)
+
+  re <- par_run(m, contrast("x", continuous = TRUE, grouping_vars = "direction",
+                            parameter = "bg", factors = bf), data = d)
+  expect_equal(nrow(re$level_summary), 2L)
+  expect_match(re$scale, "averaged over group (equal weights)", fixed = TRUE)
+  expect_equal(re$contrast$grouping_vars, "direction")
+  pe <- ap(re)
+  expect_equal(pe$contrast[pe$direction == "EXT"], (cell(2, 1) + cell(2, 2) + cell(2, 3)) / 3)
+
+  rd <- par_run(m, contrast("x", continuous = TRUE, grouping_vars = "direction",
+                            parameter = "bg", factors = bf, weights = "data"), data = d)
+  expect_match(rd$scale, "(data weights)", fixed = TRUE)
+  pd <- ap(rd)
+  w  <- n["FLEX", ] / sum(n["FLEX", ])
+  expect_equal(pd$contrast[pd$direction == "FLEX"],
+               w[["c"]] * cell(1, 1) + w[["s1"]] * cell(1, 2) + w[["s2"]] * cell(1, 3))
+  expect_equal(rd$level_summary$median[1], median(pd$contrast[pd$direction == "FLEX"]))
+
+  # categorical contrast_var stays a cell: FLEX - EXT of the group averages
+  rc <- par_run(m, contrast("direction", contrast_levels = c("EXT", "FLEX"),
+                            grouping_vars = "direction", parameter = "bg", factors = bf), data = d)
+  pc <- dplyr::arrange(rc$posterior, .draw)
+  expect_equal(pc$contrast, (cell(1, 1) + cell(1, 2) + cell(1, 3) -
+                               cell(2, 1) - cell(2, 2) - cell(2, 3)) / 3)
+
+  # two_way kept as a cell, everything else averaged
+  rt <- par_run(m, contrast("x", continuous = TRUE, two_way = "direction", grouping_vars = "direction",
+                            parameter = "bg", factors = bf), data = d)
+  expect_equal(sum(rt$scenario_grid$probability), 1)
+
+  # errors: unknown grouping_vars; data weights need data columns
+  expect_error(par_run(m, contrast("x", continuous = TRUE, grouping_vars = "finger",
+                                   parameter = "bg", factors = bf)), "not in names")
+  expect_error(par_run(m, contrast("x", continuous = TRUE, grouping_vars = "direction", weights = "data",
+                                   parameter = "bg", factors = list(direction = dirs, grp = groups))),
+               "not a column")
+})
+
+test_that("identity: data-weighted average of bg x range(x) equals the counterfactual mu_bg_rep contrast", {
+  skip_if_no_cmdstan()
+  # counterfactual GQ runs on the fitted data, so refit (no recompile) on unbalanced
+  # data to make data weights differ from equal weights
+  d <- tm_data()
+  d <- d[-which(d$direction == "FLEX" & d$group == "s2")[1:6], ]
+  m <- tm_compiled() |> fit(data = d)
+  cf <- quiet(infer_contrasts(m, contrast("x", continuous = TRUE, grouping_vars = "direction",
+                                          outcome = outcome_spec(gq_var = "mu_bg_rep")),
+                              data = d, draws_method = "counterfactual", gq_steps = 2))
+  pr <- par_run(m, contrast("x", continuous = TRUE, grouping_vars = "direction", weights = "data",
+                            parameter = "bg", factors = c("direction", "group"), delta = "range"),
+                data = d)
+  j <- dplyr::inner_join(cf$grid_posterior, pr$posterior, by = c(".draw", "direction"))
+  expect_equal(nrow(j), 2L * posterior::ndraws(m$draws))
+  expect_lt(max(abs(j$contrast.x - j$contrast.y)), 1e-4)
+  # equal weights do not reproduce it on unbalanced data
+  pe <- par_run(m, contrast("x", continuous = TRUE, grouping_vars = "direction",
+                            parameter = "bg", factors = c("direction", "group"), delta = "range"),
+                data = d)
+  je <- dplyr::inner_join(cf$grid_posterior, pe$posterior, by = c(".draw", "direction"))
+  expect_gt(max(abs(je$contrast.x - je$contrast.y)), 1e-3)
+})
+
 test_that("non-identity link gives a one-time message pointing to the counterfactual route", {
   skip_if_no_cmdstan()
   m  <- tm_fit()

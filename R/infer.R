@@ -118,7 +118,10 @@ print.outcome_spec_hurdle <- function(x, ...) {
 #' Create a contrast specification object
 #'
 #' @param contrast_var  character scalar -- the variable whose levels are contrasted
-#' @param grouping_vars character vector of variables to group by
+#' @param grouping_vars character vector of variables to group by. With
+#'   `draws_method = "parameter"`: the factors (names of `factors`) kept as cells;
+#'   the others, apart from a categorical `contrast_var` and `two_way`, are averaged
+#'   per draw (see `weights`). NULL (default) keeps every factor as a cell.
 #' @param contrast_levels for categorical: length-2 character vector
 #'   c(reference, index); the contrast is `index - reference` (second minus first).
 #'   For continuous with quantiles: length-2 numeric vector of probabilities, e.g. c(0.75, 0.25).
@@ -154,6 +157,11 @@ print.outcome_spec_hurdle <- function(x, ...) {
 #' @param link character; the link of the model's linear predictor (default
 #'   `"identity"`). The package cannot read it from the Stan code; a non-identity
 #'   link only triggers a message in the parameter route.
+#' @param weights `"equal"` (default) or `"data"`: how the parameter route averages
+#'   over the factors not in `grouping_vars`. `"equal"`: each level counts the same.
+#'   `"data"`: each level counts by its number of rows in the data (for several
+#'   averaged factors, by the joint cell counts, within each kept cell); needs the
+#'   averaged factors to be data columns. Parameter route only.
 #' @return an object of class `contrast`
 #' @export
 # ---- contrast() validation: remove the continuous + two_way guard ----------
@@ -171,7 +179,9 @@ contrast <- function(
                      parameter           = NULL,
                      factors             = NULL,
                      delta               = NULL,
-                     link                = "identity") {
+                     link                = "identity",
+                     weights             = c("equal", "data")) {
+  weights <- match.arg(weights)
   if (!is.null(grouping_vars)) {
     stopifnot(is.character(grouping_vars), length(grouping_vars) >= 1)
   }
@@ -219,6 +229,7 @@ contrast <- function(
       factors             = factors,
       delta               = delta,
       link                = link,
+      weights             = weights,
       # internal numeric_array-related meta-data:
       .array_source       = NULL,
       .array_cols         = NULL
@@ -1374,8 +1385,14 @@ print.inference <- function(x, ...) {
 #'   and the result is the difference between two of its levels (`contrast_levels`,
 #'   second minus first) or, if `contrast_levels` is NULL, between every pair of
 #'   levels. `two_way` (another factor) classifies each draw into the four scenarios,
-#'   as [ppc_scenarios()] does. `grouping_vars` is ignored: every factor other than
-#'   `contrast_var` and `two_way` is a cell. `filter_draws` may refer to the factors.
+#'   as [ppc_scenarios()] does. With `grouping_vars = NULL` every factor other than
+#'   `contrast_var` and `two_way` is a cell; otherwise the factors not named in
+#'   `grouping_vars` (nor `contrast_var` or `two_way`) are averaged per draw before
+#'   the summaries, differences and scenarios, with `contrast(weights = )` `"equal"`
+#'   (each level the same) or `"data"` (rows per level; for a linear model this
+#'   reproduces the counterfactual average over rows, draw by draw). The scale label
+#'   says what was averaged. `filter_draws` may refer to the factors and is applied
+#'   before averaging.
 #'   For a model linear in `contrast_var` with an identity link, parameter times
 #'   `delta` equals the counterfactual contrast on an expectation GQ (e.g. `mu_rep`)
 #'   between two predictor values `delta` apart, draw by draw, at a fraction of the
@@ -1726,6 +1743,28 @@ infer_contrasts <- function(model,
   sprintf("parameter \u00d7 \u0394(%s of %s)", what, co$contrast_var)
 }
 
+#' Average parameter draws over factors `avg` within each draw and cell `keep`.
+#' weights "equal": each level counts the same; "data": the number of rows of
+#' `data` per cell of all factors that are data columns (so per kept cell, the
+#' share of observations), which is what a counterfactual mean over rows uses.
+#' @keywords internal
+.average_factors <- function(draws, avg, keep, factors, data, weights, id) {
+  draws$.w <- 1
+  if (weights == "data") {
+    if (length(miss <- setdiff(avg, names(data))))
+      stop(sprintf(paste0("weights = \"data\" needs the averaged factor(s) as data columns; ",
+                          "'%s' is not a column of the data. Give `factors` as data column ",
+                          "names, or use weights = \"equal\"."), paste(miss, collapse = "', '")),
+           call. = FALSE)
+    by <- intersect(c(keep, avg), names(data))
+    n  <- dplyr::count(data, dplyr::across(dplyr::all_of(by)), name = ".w")
+    for (f in by) n[[f]] <- factor(as.character(n[[f]]), levels = factors[[f]])
+    draws <- dplyr::left_join(dplyr::select(draws, -".w"), n, by = by)
+    draws$.w[is.na(draws$.w)] <- 0   # levels absent from the data
+  }
+  dplyr::summarise(draws, value = sum(.w * value) / sum(.w), .by = dplyr::all_of(c(id, keep)))
+}
+
 #' Median, HPDI (coda), probability of direction of a vector of draws
 #' @keywords internal
 .pd_summary <- function(v, prob) {
@@ -1754,6 +1793,23 @@ infer_contrasts <- function(model,
   if (!is.null(dv)) draws$value <- draws$value * dv
   if (!is.null(co$filter_draws)) draws <- dplyr::filter(draws, !!co$filter_draws)
   id <- c(".chain", ".iteration", ".draw")
+
+  # grouping_vars given: factors not kept as cells are averaged per draw
+  if (!is.null(co$grouping_vars)) {
+    keep <- c(co$grouping_vars, if (!isTRUE(co$continuous)) co$contrast_var, co$two_way)
+    if (length(bad <- setdiff(co$grouping_vars, fnames)))
+      stop(sprintf("grouping_vars '%s' not in names(factors) (%s).",
+                   paste(bad, collapse = "', '"), paste(fnames, collapse = ", ")), call. = FALSE)
+    avg <- setdiff(fnames, keep)
+    if (length(avg)) {
+      w      <- co$weights %||% "equal"
+      fnames <- setdiff(fnames, avg)
+      draws  <- .average_factors(draws, avg, fnames, factors, data, w, id)
+      factors <- factors[fnames]
+      scale  <- sprintf("%s, averaged over %s (%s weights)", scale,
+                        paste(avg, collapse = " \u00d7 "), w)
+    }
+  }
 
   level_summary <- draws |>
     dplyr::summarise(.pd_summary(value, prob), .by = dplyr::all_of(fnames)) |>

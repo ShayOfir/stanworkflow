@@ -43,7 +43,8 @@ testthat::test_file("tests/testthat/test-stanmodels.R")
 ```
 
 Tests: `helper-model.R` holds one tiny linear model (`y ~ a[direction] + g[group] +
-b[direction]*x`, GQ `mu_rep`, `mu0_rep`, `y_rep`, `log_lik`) compiled once per run
+b[direction]*x`, GQ `mu_rep`, `mu0_rep`, `y_rep`, `log_lik`, plus the deterministic
+two-index `bg[direction, group] = b + g` and `mu_bg_rep` for averaging tests) compiled once per run
 (`tm_compiled()`, `tm_fit()`; also a `models/tm` folder for `regimen()`/`wflow()`).
 Because it is linear, contrasts have closed forms (b·Δx, g[k] − g[j]) and the tests check
 them draw by draw. `test-counterfactual.R` (pairing with `gq_n_draws`, identity, y_rep
@@ -180,7 +181,9 @@ invariant to `a`. Reading `beta_lesion` / `beta_roi_3d` from the draws is exact,
 orders of magnitude cheaper than the `gq()` sweep. `draws_method = "parameter"`
 (`.compute_parameter_contrast()` in `R/infer.R`; inputs `parameter`/`factors`/`delta` on the
 `contrast`) implements that route; `test-parameter.R` checks the identity against the
-counterfactual `mu_rep` contrast. Counterfactual sweeps only earn their cost for non-linear
+counterfactual `mu_rep` contrast. With `grouping_vars`, factors not kept as cells are averaged
+per draw (`contrast(weights = "equal"|"data")`; `"data"` reproduces the counterfactual mean
+over rows, tested on `bg`/`mu_bg_rep`). Counterfactual sweeps only earn their cost for non-linear
 models or non-identity links.
 
 **`gq_n_draws` in counterfactual contrasts (fixed on main, 2026-11).** Before the fix,

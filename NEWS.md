@@ -22,6 +22,14 @@
   counterfactual contrast on an expectation GQ draw by draw (tested).
   `contrast(link = )` declares a non-identity link, which gives a one-time
   message pointing to the counterfactual route for outcome-scale effects.
+* Parameter route: `grouping_vars` now selects the factors kept as cells; the
+  other factors (except a categorical `contrast_var` and `two_way`) are averaged
+  per draw before summaries, differences and scenarios. New
+  `contrast(weights = )`: `"equal"` (default, each level the same) or `"data"`
+  (rows per level in the data, joint counts within each kept cell; reproduces
+  the counterfactual average over rows for a linear model). The `scale` label
+  names what was averaged. `grouping_vars = NULL` (default) is unchanged: every
+  factor is a cell.
 * `parameter_draws()` and `parameter_scenarios()`: aliases of
   `ppc_by_parameter()` and `ppc_scenarios()` (old names unchanged).
 

@@ -4,7 +4,10 @@
 #   y = a[direction] + g[group] + b[direction] * x + e
 #
 # GQ: mu_rep (expectation), mu0_rep (expectation without the x term),
-# y_rep (predictive draw), log_lik. Everything is linear, so counterfactual
+# y_rep (predictive draw), log_lik; and bg[direction, group] = b[direction] + g[group]
+# with mu_bg_rep = mu0_rep + bg[direction, group] * x, a deterministic two-index
+# "slope" for averaging tests (no RNG, so the other draws do not change).
+# Everything is linear, so counterfactual
 # contrasts have closed forms: on x, b[d] * dx; on group, g[k] - g[j].
 
 skip_if_no_cmdstan <- function() {
@@ -37,6 +40,9 @@ model {
 generated quantities {
   vector[N] mu0_rep = a[direction_id] + g[group_id];
   vector[N] mu_rep  = mu0_rep + b[direction_id] .* x;
+  matrix[n_direction, n_group] bg = rep_matrix(b, n_group) + rep_matrix(g', n_direction);
+  vector[N] mu_bg_rep;
+  for (n in 1:N) mu_bg_rep[n] = mu0_rep[n] + bg[direction_id[n], group_id[n]] * x[n];
   vector[N] y_rep;
   vector[N] log_lik;
   for (n in 1:N) {
