@@ -19,6 +19,13 @@
 
 ## Bug fixes
 
+* Counterfactual contrasts ignored `infer_contrasts(data = )` when running
+  `generate_quantities()` (it always used the fitted data; `data` only set the
+  grid range and the feature columns). The supplied data are now used, with the
+  factor coding of the fitted data, so other covariates can be held at chosen
+  values. Calls whose `data` differs from the fitted data only in the contrast
+  variable (which the counterfactual overwrites) give the same results as before.
+
 * `fit()` and `gq()` now stop if any CmdStan chain returns a non-zero code.
   Previously cmdstanr only warned and the draws of the surviving chains were
   used silently (e.g. 200 instead of 400 draws when one chain's process failed

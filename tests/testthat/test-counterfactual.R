@@ -64,6 +64,20 @@ test_that("finger-paper pattern: filter_draws quosure, grouping_vars, effect_pos
   expect_equal(p$p, c(1, 1))
 })
 
+test_that("counterfactual GQ runs on the supplied data, with the fitted factor coding", {
+  skip_if_no_cmdstan()
+  m <- tm_fit()
+  b <- tm_draws(m, "b")
+  # every row set to EXT (2nd level), as a factor with one level: the contrast must be
+  # b[EXT] * dx for every row, so the per-draw mean is b[2] * dx
+  d_ext <- m$data
+  d_ext$direction <- factor("EXT")
+  co <- contrast(contrast_var = "x", continuous = TRUE, outcome = outcome_spec(gq_var = "mu_rep"))
+  r <- quiet(infer_contrasts(m, co, data = d_ext, draws_method = "counterfactual", gq_steps = 2))
+  gp <- r$grid_posterior
+  expect_lt(max(abs(gp$contrast - b[["b[2]"]][gp$.draw] * diff(range(m$data$x)))), 1e-4)
+})
+
 test_that("counterfactual on y_rep warns and points to mu_rep", {
   skip_if_no_cmdstan()
   expect_warning(cf_run(tm_fit(), cf_contrast("y_rep"), gq_n_draws = 10), "mu_rep")

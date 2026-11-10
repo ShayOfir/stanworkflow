@@ -23,7 +23,9 @@ infer_contrasts(
 
 \item{contrasts}{a single \code{contrast} object or a list of \code{contrast} objects}
 
-\item{data}{data frame used for fitting; if \code{NULL} uses \code{model$data} (default NULL)}
+\item{data}{data frame (default NULL = \code{model$data}); the counterfactual route runs
+\code{generate_quantities()} on it (factor coding taken from \code{model$data}), so it can hold
+other covariate values, e.g. a fixed intensity for every row}
 
 \item{extra}{optional named list of additional Stan data passed to \code{get_stan_data()} (default NULL)}
 

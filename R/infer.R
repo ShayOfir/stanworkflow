@@ -811,8 +811,9 @@ print.inference <- function(x, ...) {
     cond_df = cond_df_use
   )
 
+  # index levels come from the fitted data, so a `data` with fewer levels keeps the coding
   stan_data <- .restore_training_dimensions(
-    stan_data, model$stan_data, new_data, data, cond_df_use, cond_df
+    stan_data, model$stan_data, new_data, model$data %||% data, cond_df_use, cond_df
   )
 
   prior_vals <- Filter(Negate(is.na), model$priors)
@@ -1112,6 +1113,7 @@ print.inference <- function(x, ...) {
         contrast_var = contrast_var,
         value        = cvar_grid[i],
         outcome_var  = gq_var_cf,
+        data         = data,
         draw_ids     = draw_ids
       )
 
@@ -1135,6 +1137,7 @@ print.inference <- function(x, ...) {
         contrast_var = contrast_var,
         value        = cvar_grid[i],
         outcome_var  = gq_var_cf,
+        data         = data,
         draw_ids     = draw_ids
       ) |>
         posterior::as_draws_df() |>                      # <<< FIX: same conversion
@@ -1310,7 +1313,9 @@ print.inference <- function(x, ...) {
 #'
 #' @param model        a fitted `stanmodel` object
 #' @param contrasts    a single `contrast` object or a list of `contrast` objects
-#' @param data         data frame used for fitting; if `NULL` uses `model$data` (default NULL)
+#' @param data         data frame (default NULL = `model$data`); the counterfactual route runs
+#'   `generate_quantities()` on it (factor coding taken from `model$data`), so it can hold
+#'   other covariate values, e.g. a fixed intensity for every row
 #' @param extra         optional named list of additional Stan data passed to `get_stan_data()` (default NULL)
 #' @param numeric_arrays optional character vector (or named list of column subsets) naming numeric array variables used by continuous contrasts (default NULL)
 #' @param extra         optional named list of additional Stan data passed to `get_stan_data()` (default NULL)

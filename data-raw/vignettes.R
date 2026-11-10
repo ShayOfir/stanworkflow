@@ -8,6 +8,7 @@ setwd("vignettes")
 src <- if (length(args)) paste0(args, ".Rmd.orig") else list.files(pattern = "\\.Rmd\\.orig$")
 for (f in src) {
   t0 <- Sys.time()
+  unlink(Sys.glob(sub("\\.Rmd\\.orig$", "-*.png", f)))   # drop figures of removed chunks
   knitr::knit(f, sub("\\.orig$", "", f), envir = new.env())
   message(f, ": ", format(round(Sys.time() - t0, 1)))
 }
