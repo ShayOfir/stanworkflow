@@ -7,7 +7,7 @@
 \usage{
 write(x, path, dir_create = TRUE, ...)
 
-\method{write}{wflow}(x, path, dir_create = TRUE, compress = 100, algorithm = "ZSTD", ...)
+\method{write}{wflow}(x, path, dir_create = TRUE, compress = 50, algorithm = "ZSTD", ...)
 }
 \arguments{
 \item{x}{a \code{wflow} object}
@@ -21,7 +21,8 @@ create it recursively}
 \item{...}{ignored (kept for backward compatibility)}
 
 \item{compress}{integer; compression level (0-100). Higher = more compression
-but slower. Default \code{100}.}
+but slower and more memory: ZSTD at 100 needs about 9 times the object's size
+in RAM, enough to kill R silently on a large posterior. Default \code{50}.}
 
 \item{algorithm}{character; \code{"ZSTD"} (default) or \code{"LZ4"} (faster, less
 compression)}

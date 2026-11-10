@@ -27,6 +27,10 @@
   their random part from R's RNG, so after `set.seed()` fits started in the same
   minute shared file names; `fit()` now passes a seed-independent
   `output_basename`.
+* `write.wflow()` (used for every checkpoint) now defaults to `compress = 50`
+  instead of 100. ZSTD at level 100 needs about 9 times the object's size in
+  extra RAM, and saving a large posterior could kill R silently. The file
+  format is unchanged and older files load as before.
 * `fit.regimen()` no longer warns "not marked as tuned" after `tune()`: the
   prior wflow reloaded from disk is marked tuned (`quick_fit` still warns, since
   it skips the prior checks).

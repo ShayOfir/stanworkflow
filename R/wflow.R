@@ -463,7 +463,8 @@ run.wflow <- function(wf,
 #' @param dir_create logical; if `TRUE` (default) and directory does not exist,
 #'   create it recursively
 #' @param compress  integer; compression level (0-100). Higher = more compression
-#'   but slower. Default `100`.
+#'   but slower and more memory: ZSTD at 100 needs about 9 times the object's size
+#'   in RAM, enough to kill R silently on a large posterior. Default `50`.
 #' @param algorithm character; `"ZSTD"` (default) or `"LZ4"` (faster, less
 #'   compression)
 #' @param ... ignored (kept for backward compatibility)
@@ -493,7 +494,7 @@ write <- function(x, path, dir_create = TRUE, ...) UseMethod("write")
 write.wflow <- function(x,
                         path,
                         dir_create = TRUE,
-                        compress   = 100,
+                        compress   = 50,
                         algorithm  = "ZSTD",
                         ...) {
   stopifnot(
@@ -576,7 +577,7 @@ load_wflow <- function(path) {
 
 # Same bytes as JWileymisc::saveRDSfst() / readRDSfst().
 #' @keywords internal
-.save_rds_fst <- function(x, path, compression = 100, algorithm = "ZSTD") {
+.save_rds_fst <- function(x, path, compression = 50, algorithm = "ZSTD") {
   saveRDS(fst::compress_fst(serialize(x, NULL), compressor = algorithm,
                             compression = compression, hash = TRUE),
           file = path, version = 3)
