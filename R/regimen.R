@@ -298,9 +298,12 @@ fit.regimen <- function(x,
   if (load_prior && file.exists(x$paths$prior)) {
     message("Loading prior wflow from: ", x$paths$prior)
     x$wf <- load_wflow(x$paths$prior)
+    x$status$tuned <- TRUE   # the saved prior wflow is the output of tune()
   } else {
     .check_prepared_regimen(x)
   }
+  # tune() is the regimen's acceptance step; the reloaded wflow still says tuned = FALSE
+  if (x$status$tuned) x$wf <- set_as_tuned(x$wf)
 
   x$wf <- x$wf |>
     run(

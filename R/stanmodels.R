@@ -347,12 +347,14 @@ fit.stanmodel <- function(x,
     )
   }
 
+  # cmdstanr's CSV names take their random part from R's RNG: after set.seed(), two fits in
+  # the same minute share file names and one loses chains. tempfile() ignores the seed.
+  dots <- list(...)
+  if (is.null(dots$output_basename)) dots$output_basename <- basename(tempfile("swf"))
   x$fitted_model <- do.call(
     x$compiled_model$sample,
-    c(list(data = stan_data), sampler_params, list(...))
+    c(list(data = stan_data), sampler_params, dots)
   )
-
-  .check_chains(x$fitted_model)
 
   x$data <- data
   x$cond_df <- cond_df
@@ -360,6 +362,8 @@ fit.stanmodel <- function(x,
   x$stan_data <- stan_data
   x$outcome_var <- outcome_var
 
+
+  x$fitted_model <- .complete_fit(x$fitted_model)
 
   # Draw posterior samples:
   x$draws <- x$fitted_model$draws()
@@ -378,6 +382,19 @@ fit.stanmodel <- function(x,
          " failed (return code ", paste(rc[rc != 0L], collapse = ", "),
          "); refusing to continue with a partial set of draws.", call. = FALSE)
   invisible(fit)
+}
+
+# cmdstanr marks a chain successful only if it parsed the chain's console output; on Windows a
+# fast chain can exit (code 0, complete CSV) before that output is read, and draws() then skips
+# its CSV. All chains exited 0, so rebuild the fit from every CSV.
+.complete_fit <- function(fit) {
+  .check_chains(fit)
+  if (length(fit$output_files()) == fit$num_chains()) return(fit)
+  files <- fit$output_files(include_failed = TRUE)
+  if (!all(file.exists(files)))
+    stop("CmdStan output file(s) missing: ", paste(files[!file.exists(files)], collapse = ", "),
+         call. = FALSE)
+  cmdstanr::as_cmdstan_fit(files)
 }
 
 #' gq - method for using generate_quantities() method in stanmodel
@@ -1002,8 +1019,8 @@ ppc.stanmodel <- function(x,
 
     # ---- summary table --------------------------------------------------
     summary_tbl <- purrr::imap_dfr(group_results, function(res, gk) {
-      grp_row <- group_label_df[group_label_df$.grp_key == gk, .by, drop = FALSE][1L, ]
-      bp  <- as.list(res$bayes_pvalues);  names(bp)  <- paste0("p_B_", names(bp))
+      grp_row <- group_label_df[group_label_df$.grp_key == gk, .by, drop = FALSE][1L, , drop = FALSE]
+      bp  <-as.list(res$bayes_pvalues);  names(bp)  <- paste0("p_B_", names(bp))
       cov <- as.list(res$coverage);       names(cov) <- paste0("cov_", names(cov))
       dplyr::bind_cols(grp_row, as.data.frame(bp), as.data.frame(cov))
     })

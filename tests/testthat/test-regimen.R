@@ -77,7 +77,8 @@ test_that("full lifecycle: prepare -> tune -> fit -> infer, checkpoints, results
   skip_if_no_cmdstan()
   tm_compiled()   # compile once (shared executable)
   reg <- tm_regimen(list(cf = paper_contrast()), ppc_by = c("group", "direction"))
-  expect_warning(quiet(reg <- run(reg, steps = c("prepare", "tune", "fit", "infer"))), not_tuned)
+  expect_no_warning(quiet(reg <- run(reg, steps = c("prepare", "tune", "fit", "infer"))),
+                    message = not_tuned)                       # tune() counts as acceptance
 
   expect_true(all(unlist(reg$status)))
   expect_true(all(file.exists(unlist(reg$paths))))
@@ -102,6 +103,7 @@ test_that("full lifecycle: prepare -> tune -> fit -> infer, checkpoints, results
   expect_equal(posterior::ndraws(po$post_fit$draws), 400L)
   expect_identical(po$post_fit$draws, reg$wf$post_fit$draws)
   expect_s3_class(po$posterior_ppc_results[[1]], "ppc_results_grouped")
+  expect_true(po$tuned)                                       # fit after tune: no "not tuned" warning
   expect_true(all(c("variable", "rhat") %in% names(po$diagnostics)))
 
   # resume() on a fresh regimen object finds every checkpoint and refits nothing

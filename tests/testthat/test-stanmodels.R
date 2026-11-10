@@ -33,7 +33,9 @@ make_mock_draws <- function(n = 10) {
 
 make_compiled_mock <- function(n = 10) {
   fitted_mock <- list(draws = function(...) make_mock_draws(n),
-                      return_codes = function() 0L)
+                      return_codes = function() 0L,
+                      num_chains = function() 4L,
+                      output_files = function(...) character(4))
   list(sample = function(...) fitted_mock)
 }
 
@@ -56,6 +58,7 @@ fast_sampler <- sampler_params(list(
   show_exceptions = FALSE,
   refresh         = 0L
 ))
+fast2 <- modifyList(fast_sampler, list(chains = 2L, parallel_chains = 2L))
 
 # ---- stanmodel constructor --------------------------------------------------
 
@@ -493,7 +496,33 @@ test_that("gq() with cache_compiled = FALSE reproduces original per-call recompi
   expect_equal(posterior::ndraws(out), posterior::ndraws(m$fitted_model$draws()))
 })
 
+test_that("fit() keeps all chains when set.seed() repeats within a minute", {
+  skip_if_no_cmdstan()
+  m <- tm_compiled(); df <- tm_data()
+  sd <- suppressMessages(get_stan_data(m, df = df)); sd$skip_likelihood <- 0L
+  for (i in 1:3) { set.seed(1); f <- fit(m, data = df, stan_data = sd, sampler_params = fast2) }
+  expect_equal(posterior::nchains(f$draws), 2L)
+})
+
 test_that(".check_chains() fails loudly on a failed chain", {
   expect_error(stanworkflow:::.check_chains(list(return_codes = function() c(0L, 1L))), "chain(s) 2", fixed = TRUE)
   expect_silent(stanworkflow:::.check_chains(list(return_codes = function() c(0L, 0L))))
+})
+
+test_that(".complete_fit() rebuilds a fit whose chain cmdstanr wrongly marked failed", {
+  skip_if_no_cmdstan()
+  f <- tm_fit()$fitted_model
+  all_files <- f$output_files()
+  # simulate the race: chain 2 exited 0 with a complete CSV, but output_files() skips it
+  lossy <- list(return_codes = function() c(0L, 0L), num_chains = function() 2L,
+                output_files = function(include_failed = FALSE)
+                  if (include_failed) all_files else all_files[1])
+  g <- stanworkflow:::.complete_fit(lossy)
+  expect_equal(posterior::nchains(g$draws()), 2L)
+  expect_s3_class(g, "CmdStanMCMC")                          # still usable by gq()/loo
+  expect_identical(stanworkflow:::.complete_fit(f), f)       # complete fit passes through
+  lossy_gone <- lossy
+  lossy_gone$output_files <- function(include_failed = FALSE)
+    if (include_failed) c(all_files[1], "nope.csv") else all_files[1]
+  expect_error(stanworkflow:::.complete_fit(lossy_gone), "missing")
 })

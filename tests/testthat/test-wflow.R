@@ -120,6 +120,9 @@ test_that("ppc() on a fitted model returns ppc_results / grouped results and plo
   expect_equal(nrow(g$summary), 6)
   expect_true(all(c("group", "direction") %in% names(g$summary)))
   expect_no_error(quiet(display(g)))
+
+  g1 <- ppc(m, .by = "group")                       # single .by keeps its column name
+  expect_equal(names(g1$summary)[1], "group")
 })
 
 test_that("diagnose() returns the draws summary", {

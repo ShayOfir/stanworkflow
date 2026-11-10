@@ -19,6 +19,20 @@
 
 ## Bug fixes
 
+* `fit()` could silently lose chains with all return codes 0. cmdstanr marks a
+  chain successful only after parsing its console output; on Windows a fast
+  chain can exit before that output is read, and `draws()` then skips its
+  complete CSV. `fit()` now rebuilds the fit from all CSVs when that happens
+  (and stops if a CSV is really missing). Separately, cmdstanr's CSV names take
+  their random part from R's RNG, so after `set.seed()` fits started in the same
+  minute shared file names; `fit()` now passes a seed-independent
+  `output_basename`.
+* `fit.regimen()` no longer warns "not marked as tuned" after `tune()`: the
+  prior wflow reloaded from disk is marked tuned (`quick_fit` still warns, since
+  it skips the prior checks).
+* The grouped PPC `$summary` with a single `.by` variable named its first
+  column `...1`; it now carries the variable name.
+
 * Counterfactual contrasts ignored `infer_contrasts(data = )` when running
   `generate_quantities()` (it always used the fitted data; `data` only set the
   grid range and the feature columns). The supplied data are now used, with the

@@ -8,6 +8,7 @@ authors:
     given-names: Shay
     email: shinofir@gmail.com
     orcid: "https://orcid.org/0000-0001-7871-2778"
+    affiliation: "Department of Neurological Rehabilitation, Loewenstein Rehabilitation Medical Center, Israel; Gray Faculty of Medical & Health Sciences, Tel Aviv University, Israel"
 license: GPL-3.0-or-later
 repository-code: "https://github.com/ShayOfir/stanworkflow"
 url: "https://github.com/ShayOfir/stanworkflow"
