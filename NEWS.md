@@ -1,4 +1,4 @@
-# stanworkflow 0.0.0.9000 (development version)
+# stanworkflow 0.1.0
 
 ## Documentation
 

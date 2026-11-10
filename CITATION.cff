@@ -2,7 +2,8 @@ cff-version: 1.2.0
 message: "If you use stanworkflow, please cite it as below."
 type: software
 title: "stanworkflow: Declarative Bayesian Workflow for Hand-Written Stan Models"
-version: 0.0.0.9000
+version: 0.1.0
+date-released: "2026-11-10"
 authors:
   - family-names: Ofir-Geva
     given-names: Shay
