@@ -524,57 +524,6 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 
 # ---- ppc --------------------------------------------------------------------
 
-
-
-# ---- ppc helpers ------------------------------------------------------------
-
-#' @keywords internal
-.interpret_bayes_pvalue <- function(p, stat_name) {
-  judgement <- dplyr::case_when(
-    p < 0.05               ~ "severe misfit",
-    p < 0.10               ~ "moderate misfit",
-    p >= 0.10 & p <= 0.90  ~ "acceptable",
-    p > 0.90 & p <= 0.95   ~ "moderate misfit",
-    p > 0.95               ~ "severe misfit"
-  )
-  direction <- dplyr::case_when(
-    stat_name == "mean"   & p < 0.10 ~ " \u2014 y_rep means below observed (prior/likelihood biased low)",
-    stat_name == "mean"   & p > 0.90 ~ " \u2014 y_rep means above observed (prior/likelihood biased high)",
-    stat_name == "sd"     & p < 0.10 ~ " \u2014 model under-dispersed relative to data",
-    stat_name == "sd"     & p > 0.90 ~ " \u2014 model over-dispersed relative to data",
-    stat_name == "median" & p < 0.10 ~ " \u2014 replicated medians below observed",
-    stat_name == "median" & p > 0.90 ~ " \u2014 replicated medians above observed",
-    stat_name == "mad"    & p < 0.10 ~ " \u2014 model robust spread too narrow",
-    stat_name == "mad"    & p > 0.90 ~ " \u2014 model robust spread too wide",
-    stat_name == "min"    & p < 0.10 ~ " \u2014 model does not capture lower tail",
-    stat_name == "min"    & p > 0.90 ~ " \u2014 model lower tail too extreme",
-    stat_name == "max"    & p < 0.10 ~ " \u2014 model does not capture upper tail",
-    stat_name == "max"    & p > 0.90 ~ " \u2014 model upper tail too extreme",
-    TRUE                             ~ ""
-  )
-  sprintf("p_B = %.3f [%s%s]", p, judgement, direction)
-}
-
-#' @keywords internal
-.interpret_coverage <- function(empirical, nominal) {
-  tol_lo <- nominal - 0.10
-  tol_hi <- nominal + 0.05
-  dplyr::case_when(
-    empirical < tol_lo ~ sprintf(
-      "under-coverage (%.1f%% < nominal %.0f%%) \u2014 predictive intervals too narrow; model may be overconfident",
-      empirical * 100, nominal * 100
-    ),
-    empirical > tol_hi ~ sprintf(
-      "over-coverage (%.1f%% > nominal %.0f%%) \u2014 predictive intervals too wide; prior likely dominates likelihood",
-      empirical * 100, nominal * 100
-    ),
-    TRUE ~ sprintf(
-      "near-nominal (%.1f%% \u2248 %.0f%%) \u2014 well-calibrated",
-      empirical * 100, nominal * 100
-    )
-  )
-}
-
 #' Run a single PPC for one (y_obs, y_rep_mat) pair
 #'
 #' @param y_obs      numeric vector of observed values

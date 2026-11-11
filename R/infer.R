@@ -2222,38 +2222,6 @@ infer_contrasts <- function(model,
 # ---- plot helpers -----------------------------------------------------------
 
 #' @keywords internal
-.plot_two_way_scenarios <- function(res) {
-  # CHANGED: guard setdiff when grouping_vars is NULL
-  outer_vars <- setdiff(res$contrast$grouping_vars %||% character(),
-                        res$contrast$two_way)
-
-  p <- ggplot2::ggplot(
-    res$scenario_probs,
-    ggplot2::aes(x = scenario, y = probability, fill = scenario)
-  ) +
-    ggplot2::geom_col() +
-    ggplot2::scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
-    ggplot2::labs(
-      title    = get_label(res$contrast),
-      subtitle = sprintf("'%s' contrast: %s \u2014 %s",
-                         res$contrast$contrast_var, res$lv1, res$lv2),
-      x = "Scenario",
-      y = "Posterior probability"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(legend.position = "none")
-
-  if (length(outer_vars) == 1L) {
-    p <- p + ggplot2::facet_wrap(~ .data[[outer_vars[1]]])
-  } else if (length(outer_vars) >= 2L) {
-    p <- p + ggplot2::facet_grid(
-      .data[[outer_vars[1]]] ~ .data[[outer_vars[2]]]
-    )
-  }
-  p
-}
-
-#' @keywords internal
 .plot_counterfactual_scenarios <- function(res) {
   # CHANGED: guard setdiff when grouping_vars is NULL
   outer_vars <- if (!is.null(res$contrast$two_way))
@@ -2463,38 +2431,3 @@ infer_contrasts <- function(model,
     lo_lbl         = lo_lbl
   )
 }
-
-#' @keywords internal  # <<< ADDED: helper plot for two_way results
-.plot_two_way_scenarios <- function(res) {
-  outer_vars <- setdiff(res$contrast$grouping_vars, res$contrast$two_way)
-
-  p <- ggplot2::ggplot(
-    res$scenario_probs,
-    ggplot2::aes(x = scenario, y = probability, fill = scenario)
-  ) +
-    ggplot2::geom_col() +
-    ggplot2::scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
-    ggplot2::labs(
-      title    = get_label(res$contrast),
-      subtitle = sprintf("'%s' contrast: %s \u2014 %s",
-                         res$contrast$contrast_var,
-                         res$lv1, res$lv2),
-      x = "Scenario",
-      y = "Posterior probability"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(legend.position = "none")
-
-  if (length(outer_vars) == 1) {
-    p <- p + ggplot2::facet_wrap(~ .data[[outer_vars[1]]])
-  } else if (length(outer_vars) >= 2) {
-    p <- p + ggplot2::facet_grid(
-      .data[[outer_vars[1]]] ~ .data[[outer_vars[2]]]
-    )
-  }
-  p
-}
-# <<< END ADDITION: .plot_two_way_scenarios
-
-
-  # ...existing code...
