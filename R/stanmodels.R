@@ -37,6 +37,37 @@
   names(x$compiled_model$variables()$data)
 }
 
+# Levels behind <col>_id / n_<col>: factor levels present in the data, or for a
+# non-factor a locale-independent sort (radix = C locale), so the coding is the
+# same on every machine. Used everywhere ids are made (fit and counterfactual).
+#' @keywords internal
+.id_levels <- function(x) {
+  if (is.factor(x)) levels(droplevels(x))
+  else as.character(sort(unique(x[!is.na(x)]), method = "radix"))
+}
+
+#' @keywords internal
+.id_warning <- function(msg)
+  warning(structure(class = c("stanworkflow_id_warning", "warning", "condition"),
+                    list(message = msg, call = NULL)))
+
+#' @keywords internal
+.as_id <- function(x, col) {
+  lv <- .id_levels(x)
+  if (is.factor(x)) {
+    empty <- setdiff(levels(x), lv)
+    if (length(empty))
+      .id_warning(sprintf(paste0("Column '%s': empty factor level(s) dropped from %s_id / n_%s: %s. ",
+                             "To keep them, pass n_%s and %s_id via `extra`."),
+                      col, col, col, paste(empty, collapse = ", "), col, col))
+  } else {
+    shown <- if (length(lv) > 10) c(utils::head(lv, 10), sprintf("... (%d levels)", length(lv))) else lv
+    .id_warning(sprintf("Column '%s' is not a factor; %s_id uses this level order: %s. Make it a factor to set the order.",
+                    col, col, paste(shown, collapse = ", ")))
+  }
+  as.integer(factor(x, levels = lv))
+}
+
 # --- priors class ----
 
 #' Create a new priors object
@@ -178,7 +209,7 @@ get_stan_data.stanmodel <- function(x,
       # id match: col_id_cond_array
       id_nm <- paste0(col, "_id_cond_array")
       if (id_nm %in% vnames) {
-        result[[id_nm]]   <- as.integer(factor(cond_df[[col]]))
+        result[[id_nm]]   <- .as_id(cond_df[[col]], col)
         cond_array_filled <- c(cond_array_filled, id_nm)
       }
     }
@@ -193,14 +224,14 @@ get_stan_data.stanmodel <- function(x,
 
     if (grepl("^n_", nm)) {
       col <- sub("^n_", "", nm)
-      if (col %in% names(df)) result[[nm]] <- dplyr::n_distinct(df[[col]])
+      if (col %in% names(df)) result[[nm]] <- length(.id_levels(df[[col]]))
       else { result[[nm]] <- NA; unfilled <- c(unfilled, nm) }
       next
     }
 
     if (grepl("_id$", nm)) {
       col <- sub("_id$", "", nm)
-      if (col %in% names(df)) result[[nm]] <- as.integer(factor(df[[col]]))
+      if (col %in% names(df)) result[[nm]] <- .as_id(df[[col]], col)
       else { result[[nm]] <- NA; unfilled <- c(unfilled, nm) }
       next
     }
@@ -223,8 +254,6 @@ get_stan_data.stanmodel <- function(x,
  
   if (length(unfilled) > 0){
     if (!(length(unfilled) == 1 && (unfilled[1]) == 'skip_likelihood')){
-      print("Unfilled variables in stan_data:")
-      print(unfilled)    
       message(
         "The following variables could not be auto-filled and need to be supplied via `extra`:\n  ",
         paste(unfilled, collapse = ", ")

@@ -65,7 +65,8 @@ only by \code{infer_contrasts(draws_method = "parameter")}; see there. Default N
 \item{factors}{named list mapping the parameter's index positions to levels, as
 in \code{\link[=ppc_by_parameter]{ppc_by_parameter()}}, e.g. \code{list(direction = c("FLEX", "EXT"))}; or a
 character vector of data columns, whose levels are then taken as
-\code{levels(factor(data[[col]]))} (the order \code{get_stan_data()} uses for \verb{<col>_id}).
+the factor levels present in \code{data[[col]]} (or, for a non-factor, a locale-independent
+sort) -- the order \code{get_stan_data()} uses for \verb{<col>_id}.
 \code{NULL} or empty for a scalar parameter. Parameter route only.}
 
 \item{delta}{NULL (default, raw parameter units), a number, or one of \code{"iqr"},

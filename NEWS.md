@@ -1,3 +1,17 @@
+# stanworkflow (development version)
+
+* Stan data-block names are read from stanc (`CmdStanModel$variables()`)
+  instead of a regex parser that dropped variables after a comment with
+  braces, `int a, b;` or a declaration split over lines.
+* `<col>_id` / `n_<col>`: a non-factor column is coded with a
+  locale-independent (radix) sort, the same on every machine, and a warning
+  lists the level order; empty factor levels are dropped with a warning
+  (pass `n_<col>` and `<col>_id` via `extra` to keep them). Factors keep
+  their level order. Counterfactual and parameter contrasts use the same
+  coding. Mixed-case character levels (e.g. "a" vs "B") may now be numbered
+  differently than before on Windows.
+* Unfilled Stan data variables are reported once, as a message.
+
 # stanworkflow 0.1.0
 
 ## Documentation

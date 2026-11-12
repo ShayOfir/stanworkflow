@@ -16,7 +16,7 @@ generated quantities { vector[N] y_rep; for (i in 1:N) y_rep[i] = normal_rng(mu,
 
 make_minimal_df <- function(n = 10) {
   data.frame(
-    group = rep(c("A", "B"), each = n / 2),
+    group = factor(rep(c("A", "B"), each = n / 2)),
     y     = rnorm(n)
   )
 }
@@ -202,6 +202,33 @@ test_that("get_stan_data() includes skip_likelihood as NA", {
 
   expect_true("skip_likelihood" %in% names(sdata))
   expect_true(is.na(sdata$skip_likelihood))
+})
+
+test_that("get_stan_data() codes a non-factor column locale-independently and says so", {
+  skip_if_no_cmdstan()
+  m  <- uncompiled_model(make_minimal_model_code())
+  df <- data.frame(group = c("b", "B", "a", "b"), y = 1:4)
+  expect_warning(sd <- suppressMessages(get_stan_data(m, df)), "level order: B, a, b", class = "stanworkflow_id_warning")
+  expect_equal(sd$group_id, c(3L, 1L, 2L, 3L))
+  expect_equal(sd$n_group, 3L)
+})
+
+test_that("get_stan_data() warns about empty factor levels and keeps factor order", {
+  skip_if_no_cmdstan()
+  m  <- uncompiled_model(make_minimal_model_code())
+  df <- data.frame(group = factor(c("z", "x", "z"), levels = c("z", "y", "x")), y = 1:3)
+  expect_warning(sd <- suppressMessages(get_stan_data(m, df)), "empty factor level.*: y")
+  expect_equal(sd$group_id, c(1L, 2L, 1L))
+  expect_equal(sd$n_group, 2L)
+  df$group <- droplevels(df$group)
+  expect_no_warning(suppressMessages(get_stan_data(m, df)))
+})
+
+test_that("get_stan_data() reports unfilled variables once, as a message only", {
+  skip_if_no_cmdstan()
+  m <- uncompiled_model(make_minimal_model_code())
+  df <- data.frame(group = factor(c("A", "B")))
+  expect_output(expect_message(get_stan_data(m, df), "y"), NA)
 })
 
 # ---- fit: guards ------------------------------------------------------------

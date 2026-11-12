@@ -67,6 +67,7 @@ tm_data <- function() {
   d$x <- round(runif(nrow(d)), 3)
   d$y <- ifelse(d$direction == "FLEX", 1 + 2 * d$x, -d$x) +
     c(c = 0, s1 = -0.5, s2 = 0.5)[d$group] + rnorm(nrow(d), sd = 0.3)
+  d$group <- factor(d$group, levels = c("c", "s1", "s2"))   # grouping columns as factors
   d$i <- NULL
   d
 }

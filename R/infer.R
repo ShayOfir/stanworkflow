@@ -148,7 +148,8 @@ print.outcome_spec_hurdle <- function(x, ...) {
 #' @param factors named list mapping the parameter's index positions to levels, as
 #'   in [ppc_by_parameter()], e.g. `list(direction = c("FLEX", "EXT"))`; or a
 #'   character vector of data columns, whose levels are then taken as
-#'   `levels(factor(data[[col]]))` (the order `get_stan_data()` uses for `<col>_id`).
+#'   the factor levels present in `data[[col]]` (or, for a non-factor, a locale-independent
+#'   sort) -- the order `get_stan_data()` uses for `<col>_id`.
 #'   `NULL` or empty for a scalar parameter. Parameter route only.
 #' @param delta NULL (default, raw parameter units), a number, or one of `"iqr"`,
 #'   `"q10q90"`, `"2sd"`, `"range"`: the parameter is multiplied by this change in
@@ -345,7 +346,7 @@ print.contrast <- function(x, ...) {
   for (iv in id_vars) {
     col <- sub("_id$", "", iv)
     if (col %in% names(new_data) && col %in% names(data)) {
-      original_levels <- levels(factor(data[[col]]))
+      original_levels <- .id_levels(data[[col]])
       stan_data[[iv]] <- as.integer(factor(new_data[[col]],
                                            levels = original_levels))
     }
@@ -357,7 +358,7 @@ print.contrast <- function(x, ...) {
   for (iv in id_cond_vars) {
     col <- sub("_id_cond_array$", "", iv)
     if (col %in% names(cond_df_use) && col %in% names(cond_df)) {
-      original_levels <- levels(factor(cond_df[[col]]))
+      original_levels <- .id_levels(cond_df[[col]])
       stan_data[[iv]] <- as.integer(factor(cond_df_use[[col]],
                                            levels = original_levels))
     }
@@ -804,11 +805,10 @@ print.inference <- function(x, ...) {
     cond_df_use[[contrast_var]] <- value
   }
 
-  stan_data <- get_stan_data(
-    model,
-    df     = new_data,
-    extra  = extra,       # <<< now contains modified arr_cf
-    cond_df = cond_df_use
+  # id coding was reported at fit time; re-encoded below from the fitted data
+  stan_data <- withCallingHandlers(
+    get_stan_data(model, df = new_data, extra = extra, cond_df = cond_df_use),
+    stanworkflow_id_warning = function(w) invokeRestart("muffleWarning")
   )
 
   # index levels come from the fitted data, so a `data` with fewer levels keeps the coding
@@ -1788,7 +1788,7 @@ infer_contrasts <- function(model,
          call. = FALSE)
   factors <- co$factors %||% list()
   if (is.character(factors))   # data columns -> levels in <col>_id order
-    factors <- stats::setNames(lapply(factors, function(f) levels(factor(data[[f]]))), factors)
+    factors <- stats::setNames(lapply(factors, function(f) .id_levels(data[[f]])), factors)
   fnames <- names(factors) %||% character()
   dv     <- .delta_value(co, data)
   scale  <- .scale_label(co)
