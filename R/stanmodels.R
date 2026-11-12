@@ -27,50 +27,14 @@
 
 
 
+# Names of the Stan data-block variables, from stanc's own parse
+# (CmdStanModel$variables(); also works for models created with compile = FALSE).
 #' @keywords internal
-.extract_prior_names <- function(model_code) {
-  matches <- regmatches(
-    model_code,
-    gregexpr("\\bprior_[A-Za-z0-9_]+", model_code)
-  )[[1]]
-  unique(matches)
-}
-
-#' @keywords internal
-.parse_stan_data_block <- function(model_code) {
-  block <- regmatches(
-    model_code,
-    regexpr("data\\s*\\{[^}]*\\}", model_code)
-  )
-  if (length(block) == 0) stop("No data block found in Stan model code.")
-
-  lines <- strsplit(block, "\n")[[1]]
-  lines <- trimws(lines)
-  lines <- lines[nzchar(lines)]
-  lines <- lines[!grepl("^data\\s*\\{|^\\}|^//", lines)]
-
-  parsed <- lapply(lines, function(ln) {
-    ln <- gsub(";.*$", "", ln)
-    ln <- trimws(ln)
-    if (!nzchar(ln)) return(NULL)
-
-    # Extract the last word (variable name) from the declaration
-    name <- trimws(gsub("^.*\\s+(\\w+)\\s*(\\[.*\\])?$", "\\1", ln))
-    name <- gsub("[^A-Za-z0-9_]", "", name)
-
-    base_type <- dplyr::case_when(
-      grepl("^int",    ln) ~ "int",
-      grepl("^real",   ln) ~ "real",
-      grepl("^vector", ln) ~ "vector",
-      grepl("^array",  ln) ~ "array",
-      grepl("^matrix", ln) ~ "matrix",
-      TRUE                 ~ "unknown"
-    )
-    list(name = name, type = base_type)
-  })
-  parsed <- Filter(Negate(is.null), parsed)
-  names(parsed) <- vapply(parsed, `[[`, character(1), "name")
-  parsed
+.data_names <- function(x) {
+  if (is.null(x$compiled_model))
+    stop("Model has no CmdStan model object. Run `compile_from_string()` or `compile_from_file()` first.",
+         call. = FALSE)
+  names(x$compiled_model$variables()$data)
 }
 
 # --- priors class ----
@@ -159,8 +123,8 @@ compile_from_file <- function(x, ...) UseMethod("compile_from_file")
 compile_from_file.stanmodel <- function(x, stan_file, ...) {
   model_code       <- paste(readLines(stan_file), collapse = "\n")
   x$model_code     <- model_code
-  x$priors         <- priors(.extract_prior_names(model_code))
   x$compiled_model <- cmdstanr::cmdstan_model(stan_file = stan_file, ...)
+  x$priors         <- priors(grep("^prior_", .data_names(x), value = TRUE))
   x
 }
 
@@ -182,8 +146,7 @@ get_stan_data.stanmodel <- function(x,
                                     extra   = list(),
                                     cond_df = NULL,
                                     ...) {
-  vars   <- .parse_stan_data_block(x$model_code)
-  vnames <- names(vars)
+  vnames <- .data_names(x)
   result <- vector("list", length(vnames))
   names(result) <- vnames
   unfilled <- character()

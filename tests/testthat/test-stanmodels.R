@@ -36,7 +36,17 @@ make_compiled_mock <- function(n = 10) {
                       return_codes = function() 0L,
                       num_chains = function() 4L,
                       output_files = function(...) character(4))
-  list(sample = function(...) fitted_mock)
+  list(sample    = function(...) fitted_mock,
+       variables = function() list(data = list(N = NULL, n_group = NULL,
+                                               group_id = NULL, y = NULL)))
+}
+
+# a real CmdStanModel without compiling: enough for $variables()
+uncompiled_model <- function(code) {
+  m                <- stanmodel()
+  m$model_code     <- code
+  m$compiled_model <- cmdstanr::cmdstan_model(cmdstanr::write_stan_file(code), compile = FALSE)
+  m
 }
 
 make_compiled_stanmodel <- function(n = 10) {
@@ -128,117 +138,44 @@ test_that("priors works with empty input", {
   expect_length(p, 0)
 })
 
-# ---- .parse_stan_data_block -------------------------------------------------
+# ---- data-block names (stanc via $variables()) -------------------------------
 
-test_that(".parse_stan_data_block extracts correct variable names", {
+test_that("data names come from stanc: comments with braces, multi-declarations, multi-line", {
+  skip_if_no_cmdstan()
   code <- "
-  data {
-    int<lower=1> N;
-    int<lower=1> n_group;
-    array[N] int<lower=1, upper=n_group> group_id;
-    vector[N] y;
-    real          prior_mu_mean;
-    real<lower=0> prior_mu_sd;
-    real<lower=0> prior_sigma_rate;
-    int<lower=0, upper=1> skip_likelihood;
-  }
-  "
-  parsed <- stanworkflow:::.parse_stan_data_block(code)
-  expect_named(
-    parsed,
-    c("N", "n_group", "group_id", "y",
-      "prior_mu_mean", "prior_mu_sd", "prior_sigma_rate", "skip_likelihood")
-  )
+functions { real f(real x) { return x; } }
+data {
+  int<lower=1> N;            // rows {braces in a comment}
+  int<lower=1> n_movie, n_rater;
+  array[N] int<lower=1, upper=n_movie>
+     movie_id;
+  vector[N] y;
+  real<lower=0> prior_scale;  // prior_fake in a comment
+  int<lower=0, upper=1> skip_likelihood;
+}
+transformed data { real prior_not_data = 1; }
+parameters { real mu; }
+model { mu ~ normal(0, prior_scale); }
+"
+  m <- uncompiled_model(code)
+  expect_equal(stanworkflow:::.data_names(m),
+               c("N", "n_movie", "n_rater", "movie_id", "y", "prior_scale", "skip_likelihood"))
+  m <- compile_from_file(stanmodel(), cmdstanr::write_stan_file(code), compile = FALSE)
+  expect_named(m$priors, "prior_scale")
 })
 
-test_that(".parse_stan_data_block handles matrix declarations", {
-  code <- "
-  data {
-    int<lower=1> N;
-    int<lower=1> P;
-    matrix[N, P] X;
-  }
-  "
-  parsed <- stanworkflow:::.parse_stan_data_block(code)
-  expect_named(parsed, c("N", "P", "X"))
-  expect_equal(parsed$X$type, "matrix")
-})
-
-test_that(".parse_stan_data_block handles 2D array declarations", {
-  code <- "
-  data {
-    int<lower=1> N;
-    int<lower=1> P;
-    int<lower=1> Q;
-    array[N, P] real X;
-    array[N, P, Q] int Y;
-  }
-  "
-  parsed <- stanworkflow:::.parse_stan_data_block(code)
-  expect_named(parsed, c("N", "P", "Q", "X", "Y"))
-  expect_equal(parsed$X$type, "array")
-  expect_equal(parsed$Y$type, "array")
-})
-
-test_that(".parse_stan_data_block handles row_vector declarations", {
-  code <- "
-  data {
-    int<lower=1> N;
-    row_vector[N] z;
-  }
-  "
-  parsed <- stanworkflow:::.parse_stan_data_block(code)
-  expect_named(parsed, c("N", "z"))
-})
-
-test_that(".parse_stan_data_block handles cov_matrix and corr_matrix", {
-  code <- "
-  data {
-    int<lower=1> K;
-    cov_matrix[K]  Sigma;
-    corr_matrix[K] Omega;
-  }
-  "
-  parsed <- stanworkflow:::.parse_stan_data_block(code)
-  expect_named(parsed, c("K", "Sigma", "Omega"))
-})
-
-test_that(".parse_stan_data_block handles comments on same line", {
-  code <- "
-  data {
-    int<lower=1> N;        // number of observations
-    real<lower=0> sigma;   // scale parameter
-  }
-  "
-  parsed <- stanworkflow:::.parse_stan_data_block(code)
-  expect_named(parsed, c("N", "sigma"))
-})
-
-test_that(".parse_stan_data_block returns empty list for empty data block", {
-  code <- "
-  data { }
-  parameters { real mu; }
-  "
-  parsed <- stanworkflow:::.parse_stan_data_block(code)
-  expect_length(parsed, 0)
-})
-
-test_that(".parse_stan_data_block errors when no data block found", {
-  code <- "
-  parameters { real mu; }
-  model { mu ~ normal(0, 1); }
-  "
-  expect_error(
-    stanworkflow:::.parse_stan_data_block(code),
-    "No data block found"
-  )
+test_that("data names: empty data block, and a clear error without a model object", {
+  skip_if_no_cmdstan()
+  expect_length(stanworkflow:::.data_names(uncompiled_model("parameters { real mu; } model { mu ~ normal(0, 1); }")), 0)
+  m <- stanmodel(); m$model_code <- make_minimal_model_code()
+  expect_error(get_stan_data(m, make_minimal_df()), "compile_from_string")
 })
 
 # ---- get_stan_data ----------------------------------------------------------
 
 test_that("get_stan_data() auto-fills N, n_group, group_id, and outcome", {
-  m            <- stanmodel()
-  m$model_code <- make_minimal_model_code()
+  skip_if_no_cmdstan()
+  m            <- uncompiled_model(make_minimal_model_code())
   df           <- make_minimal_df(10)
 
   sd <- suppressMessages(
@@ -252,8 +189,8 @@ test_that("get_stan_data() auto-fills N, n_group, group_id, and outcome", {
 })
 
 test_that("get_stan_data() messages on unfilled variables", {
-  m            <- stanmodel()
-  m$model_code <- make_minimal_model_code()
+  skip_if_no_cmdstan()
+  m            <- uncompiled_model(make_minimal_model_code())
   df           <- make_minimal_df(10)["group"]
 
   expect_message(get_stan_data(m, df), regexp = "y")
