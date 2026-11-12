@@ -25,7 +25,7 @@ method.}
 
 \item{vars}{character vector of feature columns to attach}
 
-\item{method}{"descriptive" (default) or "counterfactual"  # <<< CHANGED from grouped_ppc/generated_quantities}
+\item{method}{"descriptive" (default) or "counterfactual"}
 
 \item{gq_steps}{integer; number of grid steps for counterfactual
 (default 30, ignored for descriptive)}
@@ -43,7 +43,7 @@ tibble; descriptive path: .draw, .iteration, .chain, \if{html}{\out{<vars>}}, y
 counterfactual path: same + contrast_var_value (numeric grid point)
 }
 \description{
-"descriptive"    -- uses grouped_ppc() on observed draws (original path).
+"descriptive"    -- uses the y_rep draws of the observed data (original path).
 "counterfactual" -- runs generate_quantities() at each point of a
 contrast_var grid; returns a tibble with an extra
 column \code{contrast_var_value} identifying the grid point.

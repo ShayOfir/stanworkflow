@@ -909,7 +909,7 @@ print.inference <- function(x, ...) {
 #' Build the long yrep tibble, using either the descriptive or counterfactual
 #' method.
 #'
-#' "descriptive"    -- uses grouped_ppc() on observed draws (original path).
+#' "descriptive"    -- uses the y_rep draws of the observed data (original path).
 #' "counterfactual" -- runs generate_quantities() at each point of a
 #'                    contrast_var grid; returns a tibble with an extra
 #'                    column `contrast_var_value` identifying the grid point.
@@ -919,7 +919,7 @@ print.inference <- function(x, ...) {
 #' @param model        fitted `stanmodel` object
 #' @param data         data frame used for fitting (nrow = N)
 #' @param vars         character vector of feature columns to attach
-#' @param method       "descriptive" (default) or "counterfactual"  # <<< CHANGED from grouped_ppc/generated_quantities
+#' @param method       "descriptive" (default) or "counterfactual"
 #' @param gq_steps     integer; number of grid steps for counterfactual
 #'                     (default 30, ignored for descriptive)
 #' @param contrast_var character; name of the variable to sweep in the grid
@@ -1793,7 +1793,7 @@ infer_contrasts <- function(model,
   dv     <- .delta_value(co, data)
   scale  <- .scale_label(co)
 
-  draws <- ppc_by_parameter(model, co$parameter, factors)
+  draws <- parameter_draws(model, co$parameter, factors)
   if (length(factors) == 0L) draws <- dplyr::rename(draws, value = dplyr::all_of(co$parameter))
   if (!is.null(dv)) draws$value <- draws$value * dv
   if (!is.null(co$filter_draws)) draws <- dplyr::filter(draws, !!co$filter_draws)

@@ -134,14 +134,14 @@ test_that("diagnose() returns the draws summary", {
   expect_true(all(s$rhat < 1.05))
 })
 
-test_that("ppc_by_parameter() labels a vector parameter by factor level", {
+test_that("parameter_draws() labels a vector parameter by factor level", {
   skip_if_no_cmdstan()
-  r <- suppressWarnings(ppc_by_parameter(tm_fit(), "b", factors = list(direction = c("FLEX", "EXT"))))
+  r <- suppressWarnings(parameter_draws(tm_fit(), "b", factors = list(direction = c("FLEX", "EXT"))))
   expect_s3_class(r$direction, "factor")
   expect_equal(levels(r$direction), c("FLEX", "EXT"))
   expect_equal(nrow(r), 400 * 2)
   expect_true(all(c("value", "direction") %in% names(r)))
-  w <- suppressWarnings(ppc_by_parameter(tm_fit(), "b", factors = list(direction = c("FLEX", "EXT")),
+  w <- suppressWarnings(parameter_draws(tm_fit(), "b", factors = list(direction = c("FLEX", "EXT")),
                         .widen_factor = "direction"))
   expect_equal(nrow(w), 400)
   expect_true(all(c("FLEX", "EXT") %in% names(w)))

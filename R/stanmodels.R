@@ -1181,11 +1181,16 @@ ppc_results <- function(plots, coverage, bayes_pvalues, interpretation, outcomes
 #' @importFrom dplyr select mutate
 #' @importFrom tidyr pivot_longer
 #' @export
-grouped_ppc <- function(x, ...) UseMethod("grouped_ppc")
+predictive_draws <- function(x, ...) UseMethod("predictive_draws")
 
-#' @rdname grouped_ppc
+#' @rdname predictive_draws
+#' @details `grouped_ppc()` is the former name of the same function.
+#' @export
+grouped_ppc <- function(x, ...) predictive_draws(x, ...)
+
+#' @rdname predictive_draws
 #' @exportS3Method
-grouped_ppc.stanmodel <- function(x, 
+predictive_draws.stanmodel <- function(x, 
                                   data,
                                   feature_names,
                                   enforce_features = TRUE,
@@ -1637,16 +1642,19 @@ CHECKS FAILED:
 #' @importFrom rlang expr
 #' @importFrom rlang !!
 #' @export
-ppc_by_parameter <- function(x, ...) UseMethod("ppc_by_parameter")
+parameter_draws <- function(x, ...) UseMethod("parameter_draws")
 
-#' @rdname ppc_by_parameter
-#' @details `parameter_draws()` is the same function under a clearer name.
+#' @rdname parameter_draws
+#' @details `ppc_by_parameter()` is the former name (deprecated; still works).
 #' @export
-parameter_draws <- ppc_by_parameter
+ppc_by_parameter <- function(x, ...) {
+  lifecycle::deprecate_warn("0.1.0", "ppc_by_parameter()", "parameter_draws()")
+  parameter_draws(x, ...)
+}
 
-#' @rdname ppc_by_parameter
+#' @rdname parameter_draws
 #' @exportS3Method
-ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NULL, ...) {
+parameter_draws.stanmodel <- function(x, parameter, factors, .widen_factor = NULL, ...) {
   
   # check if draws is present
   if (is.null(x$draws)) {
@@ -1788,16 +1796,19 @@ ppc_by_parameter.stanmodel <- function(x, parameter, factors, .widen_factor = NU
 #'   }
 #'
 #' @export
-ppc_scenarios <- function(x, ...) UseMethod("ppc_scenarios")
+parameter_scenarios <- function(x, ...) UseMethod("parameter_scenarios")
 
-#' @rdname ppc_scenarios
-#' @details `parameter_scenarios()` is the same function under a clearer name.
+#' @rdname parameter_scenarios
+#' @details `ppc_scenarios()` is the former name (deprecated; still works).
 #' @export
-parameter_scenarios <- ppc_scenarios
+ppc_scenarios <- function(x, ...) {
+  lifecycle::deprecate_warn("0.1.0", "ppc_scenarios()", "parameter_scenarios()")
+  parameter_scenarios(x, ...)
+}
 
-#' @rdname ppc_scenarios
+#' @rdname parameter_scenarios
 #' @exportS3Method
-ppc_scenarios.stanmodel <- function(x,
+parameter_scenarios.stanmodel <- function(x,
                                     parameter,
                                     factors,
                                     scenario_factor,
@@ -1841,7 +1852,7 @@ ppc_scenarios.stanmodel <- function(x,
   }
 
   # 1. Extract wide draws -- one column per level of widen_factor
-  draws_wide <- ppc_by_parameter(x,
+  draws_wide <- parameter_draws(x,
                                  parameter    = parameter,
                                  factors      = factors,
                                  .widen_factor = scenario_factor)

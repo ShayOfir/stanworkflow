@@ -51,6 +51,10 @@
   refitting with `seed = x$provenance$seed` reproduces the draws.
 * `wflow()`: prior predictive checks default to 500 + 500 draws (as in
   `regimen()`).
+* Clearer names: `parameter_draws()` / `parameter_scenarios()` are now the
+  functions; `ppc_by_parameter()` / `ppc_scenarios()` still work but are
+  deprecated (they summarise parameter draws, not predictive checks).
+  `predictive_draws()` is the new name of `grouped_ppc()` (kept as alias).
 * `diagnostics_params`: new `wflow()` argument; the model-folder file
   (`diagnostics_params.csv` or `.txt`) is read leniently (one name per line or
   comma-separated, optional header, comments); names the model does not

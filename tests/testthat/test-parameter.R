@@ -1,5 +1,5 @@
 # Parameter route (draws_method = "parameter") and the parameter-draw helpers
-# ppc_by_parameter() / ppc_scenarios() and their aliases, on the shared linear
+# parameter_draws() / parameter_scenarios() and their aliases, on the shared linear
 # model (helper-model.R): y = a[direction] + g[group] + b[direction] * x + e.
 
 dirs   <- c("FLEX", "EXT")
@@ -30,43 +30,49 @@ test_that("contrast() validates the parameter-route fields; delta needs a numeri
   expect_equal(stanworkflow:::.scale_label(contrast("x")), "parameter")
 })
 
-test_that("aliases are the same functions", {
-  expect_identical(parameter_draws, ppc_by_parameter)
-  expect_identical(parameter_scenarios, ppc_scenarios)
+test_that("old names ppc_by_parameter()/ppc_scenarios() are deprecated aliases; grouped_ppc() = predictive_draws()", {
+  skip_if_no_cmdstan()
+  m <- tm_fit()
+  rlang::local_options(lifecycle_verbosity = "warning")
+  expect_warning(old <- ppc_by_parameter(m, "b", list(direction = dirs)), "parameter_draws")
+  expect_identical(old, parameter_draws(m, "b", list(direction = dirs)))
+  expect_warning(olds <- ppc_scenarios(m, "b", list(direction = dirs), scenario_factor = "direction"),
+                 "parameter_scenarios")
+  expect_identical(olds[1:3], parameter_scenarios(m, "b", list(direction = dirs),
+                                                  scenario_factor = "direction")[1:3])
+  expect_identical(grouped_ppc(m, data = tm_data(), feature_names = "group"),
+                   predictive_draws(m, data = tm_data(), feature_names = "group"))
 })
 
 # ---- CmdStan ---------------------------------------------------------------------
 
-test_that("ppc_by_parameter() labels indices; parameter_draws() returns the identical object", {
+test_that("parameter_draws() labels indices", {
   skip_if_no_cmdstan()
   m <- tm_fit()
   b <- tm_draws(m, "b")
-  long <- ppc_by_parameter(m, "b", list(direction = dirs))
-  expect_identical(parameter_draws(m, "b", list(direction = dirs)), long)
+  long <- parameter_draws(m, "b", list(direction = dirs))
   expect_equal(nrow(long), 2L * posterior::ndraws(m$draws))
   expect_equal(levels(long$direction), dirs)
   ext <- dplyr::arrange(dplyr::filter(long, direction == "EXT"), .draw)
   expect_equal(ext$value, b[["b[2]"]])
-  wide <- ppc_by_parameter(m, "g", list(group = groups), .widen_factor = "group")
+  wide <- parameter_draws(m, "g", list(group = groups), .widen_factor = "group")
   expect_equal(names(wide), c(".chain", ".iteration", ".draw", groups))
-  expect_error(ppc_by_parameter(m, "b", list(direction = c("FLEX", "EXT", "X"))), "does not match")
-  expect_error(ppc_by_parameter(m, "nope", list()), "not found")
-  expect_equal(names(ppc_by_parameter(m, "sigma", list())), c("sigma", ".chain", ".iteration", ".draw"))
+  expect_error(parameter_draws(m, "b", list(direction = c("FLEX", "EXT", "X"))), "does not match")
+  expect_error(parameter_draws(m, "nope", list()), "not found")
+  expect_equal(names(parameter_draws(m, "sigma", list())), c("sigma", ".chain", ".iteration", ".draw"))
 })
 
-test_that("ppc_scenarios() classifies draws by sign; parameter_scenarios() is identical", {
+test_that("parameter_scenarios() classifies draws by sign", {
   skip_if_no_cmdstan()
   m <- tm_fit()
   b <- tm_draws(m, "b")
-  s <- ppc_scenarios(m, "b", list(direction = dirs), scenario_factor = "direction")
-  expect_identical(parameter_scenarios(m, "b", list(direction = dirs), scenario_factor = "direction")[1:3],
-                   s[1:3])
+  s <- parameter_scenarios(m, "b", list(direction = dirs), scenario_factor = "direction")
   sd <- dplyr::arrange(s$scenario_draws, .draw)
   expect_identical(sd$scenario == "Affects both", b[["b[1]"]] > 0 & b[["b[2]"]] > 0)
   expect_equal(sum(unlist(s$scenario_grid)), 1)
   expect_s3_class(s$plot, "ggplot")
   # scenario_levels picks (and orders) the two outcome columns
-  s2 <- ppc_scenarios(m, "b", list(direction = dirs), scenario_factor = "direction",
+  s2 <- parameter_scenarios(m, "b", list(direction = dirs), scenario_factor = "direction",
                       scenario_levels = c("EXT", "FLEX"), effect_positive = FALSE)
   expect_identical(s2$scenario_draws$scenario == "Affects EXT only",
                    s2$scenario_draws$EXT < 0 & s2$scenario_draws$FLEX >= 0)
