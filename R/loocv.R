@@ -241,7 +241,6 @@ loo_cv.stanmodel <- function(x,
                               ...) {
 
   if (is.null(x$draws))        stop("No draws found. Run `fit()` first.")
-  if (is.null(x$fitted_model)) stop("No fitted_model found. Run `fit()` first.")
   if (!"log_lik" %in% x$variables) {
     stop(
       "No `log_lik` variable found in draws.\n",
@@ -259,8 +258,8 @@ loo_cv.stanmodel <- function(x,
   # ---- relative ESS correction (Vehtari et al. 2017) ---------------------
   # Corrects for the fact that MCMC draws are autocorrelated, not i.i.d.
   r_eff_vals <- if (r_eff) {
-    n_chains   <- x$fitted_model$num_chains()
-    n_iter     <- x$fitted_model$metadata()$iter_sampling
+    n_chains   <- posterior::nchains(x$draws)
+    n_iter     <- posterior::niterations(x$draws)
     loo::relative_eff(
       exp(log_lik_mat),
       chain_id = rep(seq_len(n_chains), each = n_iter)
@@ -275,6 +274,10 @@ loo_cv.stanmodel <- function(x,
   # Moment matching: Gelman Sec. 7 -- before concluding LOO is unreliable for
   # high-k observations, attempt to stabilise via moment matching.
   if (moment_matching) {
+    # needs the live CmdStan model (re-evaluates the log density), not just draws
+    if (is.null(x$fitted_model) || !all(file.exists(x$fitted_model$output_files())))
+      stop("moment_matching = TRUE needs the CmdStan fit of this session; refit the model ",
+           "(a model reloaded from disk has only its draws).", call. = FALSE)
     loo_obj <- loo::loo(
       x$fitted_model,
       moment_match = TRUE,

@@ -298,12 +298,11 @@ fit.regimen <- function(x,
   if (load_prior && file.exists(x$paths$prior)) {
     message("Loading prior wflow from: ", x$paths$prior)
     x$wf <- load_wflow(x$paths$prior)
-    x$status$tuned <- TRUE   # the saved prior wflow is the output of tune()
+    x$status$tuned <- TRUE   # the prior check has run (acceptance is x$wf$tuned)
   } else {
     .check_prepared_regimen(x)
   }
-  # tune() is the regimen's acceptance step; the reloaded wflow still says tuned = FALSE
-  if (x$status$tuned) x$wf <- set_as_tuned(x$wf)
+  # accepted priors are recorded in the wflow by accept_priors(); otherwise fit warns
 
   x$wf <- x$wf |>
     run(
@@ -322,6 +321,16 @@ fit.regimen <- function(x,
   x$status$fitted   <- TRUE
   x$status$prepared <- TRUE
   x
+}
+
+#' @rdname accept_priors
+#' @exportS3Method
+accept_priors.regimen <- function(wf, ...) {
+  if (is.null(wf$wf) || is.null(wf$wf$prior_fit))
+    stop("No prior predictive check to accept: run `tune()` on the regimen first.", call. = FALSE)
+  wf$wf <- accept_priors(wf$wf)
+  if (file.exists(wf$paths$prior)) write(wf$wf, wf$paths$prior)   # fit() reloads this file
+  wf
 }
 
 # ---- infer ------------------------------------------------------------------
@@ -464,9 +473,6 @@ quick_fit.regimen <- function(x,
       sampler_params_list = as.list(x$post_sampler_params),
       ...
     )
-
-  # ---- Mark as tuned to avoid warning in fit_posterior
-  x$wf <- x$wf |> set_as_tuned()
 
   # ---- SKIP: posterior predictive checks ------
   # (no run_predictive_checks() for posterior)

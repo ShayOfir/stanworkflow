@@ -77,8 +77,10 @@ test_that("full lifecycle: prepare -> tune -> fit -> infer, checkpoints, results
   skip_if_no_cmdstan()
   tm_compiled()   # compile once (shared executable)
   reg <- tm_regimen(list(cf = paper_contrast()), ppc_by = c("group", "direction"))
-  expect_no_warning(quiet(reg <- run(reg, steps = c("prepare", "tune", "fit", "infer"))),
-                    message = not_tuned)                       # tune() counts as acceptance
+  quiet(reg <- run(reg, steps = c("prepare", "tune")))
+  expect_false(reg$wf$tuned)                                   # tune() alone does not accept
+  reg <- accept_priors(reg)                                    # the user accepts the priors
+  expect_no_warning(quiet(reg <- run(reg, steps = c("fit", "infer"))), message = not_tuned)
 
   expect_true(all(unlist(reg$status)))
   expect_true(all(file.exists(unlist(reg$paths))))
@@ -103,7 +105,8 @@ test_that("full lifecycle: prepare -> tune -> fit -> infer, checkpoints, results
   expect_equal(posterior::ndraws(po$post_fit$draws), 400L)
   expect_identical(po$post_fit$draws, reg$wf$post_fit$draws)
   expect_s3_class(po$posterior_ppc_results[[1]], "ppc_results_grouped")
-  expect_true(po$tuned)                                       # fit after tune: no "not tuned" warning
+  expect_true(po$tuned)                                       # accepted priors carried into the posterior file
+  expect_true(prior_log(po)$accepted[1])
   expect_true(all(c("variable", "rhat") %in% names(po$diagnostics)))
 
   # resume() on a fresh regimen object finds every checkpoint and refits nothing
@@ -155,7 +158,7 @@ test_that("run(steps = 'quick_fit') prepares, saves the posterior, and infer() p
   expect_true(file.exists(reg$paths$posterior))
   expect_false(file.exists(reg$paths$prior))
   wf <- suppressMessages(load_wflow(reg$paths$posterior))
-  expect_true(wf$tuned)                               # quick_fit marks the wflow tuned
+  expect_false(wf$tuned)                              # quick_fit skips the prior check: priors not accepted
   expect_identical(wf$post_fit$draws, reg$wf$post_fit$draws)
 
   # explore contrasts later without refitting (update_contrasts -> infer)
@@ -167,4 +170,14 @@ test_that("run(steps = 'quick_fit') prepares, saves the posterior, and infer() p
   p <- get_inference(reg, "grp")$posterior
   expect_lt(max(abs(p$contrast - (g[["g[3]"]] - g[["g[1]"]])[p$.draw])), 1e-4)
   expect_identical(readRDS(reg$paths$inference)$grp$posterior, p)
+})
+
+test_that("regimen: fit after tune without accept_priors() warns but runs", {
+  skip_if_no_cmdstan()
+  tm_compiled()
+  reg <- tm_regimen()
+  quiet(reg <- run(reg, steps = c("prepare", "tune")))
+  expect_warning(quiet(reg <- run(reg, steps = "fit")), not_tuned)
+  expect_true(reg$status$fitted)
+  expect_error(accept_priors(tm_regimen()), "run `tune")
 })

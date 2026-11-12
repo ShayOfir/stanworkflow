@@ -15,6 +15,25 @@
   `run_predictive_checks()`) records the prior values, the predictive-check
   numbers and the density-overlay and mean-SD plots; `set_as_tuned()` marks
   the last run as accepted.
+* New `accept_priors()` (`set_as_tuned()` is now an alias): records that the
+  priors were accepted after the prior predictive check, in the wflow (single
+  source of truth) and in `prior_log()`. A `regimen` no longer accepts priors
+  automatically after `tune` (nor does `quick_fit`): `fit` warns until
+  `accept_priors(reg)` is called; the prior file is re-saved.
+* `tune()` / `run_predictive_checks()` use the wflow's prior sampler settings
+  (`prior_sampler_params_list`); an argument overrides them. The spurious
+  "not a sampler_params class" warning is gone. Prior and posterior checks are
+  separate internal functions.
+* Prior predictive checks report interval coverage neutrally (no
+  "over-coverage ... prior dominates likelihood").
+* One copy of the draws: `fit()` keeps `x$draws` and the new
+  `x$sampler_diagnostics`, and drops cmdstanr's internal copy (about 60% of a
+  fit object). `diagnose()` and `loo_cv()` work from these, so a model loaded
+  in a new R session (CmdStan files gone) works downstream. Moment matching
+  still needs the CmdStan fit of the session (clear error otherwise).
+* `gq()` uses the model's own executable (recompiles only for a reloaded
+  model) and takes the parameters from `x$draws`.
+* `stanmodel()` declares all fields; new `validate_stanmodel()`.
 * `priors.csv`: a vector prior is written in one cell, values separated by
   `;`. Names the model does not declare give a warning and are ignored
   (e.g. leftovers after switching a prior family).

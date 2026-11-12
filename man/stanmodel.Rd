@@ -10,5 +10,20 @@ stanmodel()
 an object of class \code{stanmodel}
 }
 \description{
-Create a new stanmodel object
+All fields are declared here; they are filled step by step:
+\describe{
+\item{set by \code{compile_from_string()} / \code{compile_from_file()}}{\code{compiled_model}
+(CmdStanModel), \code{model_code} (character), \code{priors} (\code{priors})}
+\item{set by the user}{\code{sampler_params} (\code{sampler_params})}
+\item{set by \code{fit()}}{\code{fitted_model} (CmdStanMCMC; its CSV files live in a temp
+folder and are gone after the R session ends; its internal copy of the draws
+is removed after fitting), \code{draws} (posterior \code{draws}, the single persistent
+copy), \code{sampler_diagnostics} (\code{draws} of divergent__, treedepth__, energy__),
+\code{variables} (character), \code{data} (data frame), \code{stan_data}
+(list passed to Stan), \code{extra} (list), \code{cond_df} (data frame or NULL),
+\code{outcome_var} (character)}
+}
+}
+\seealso{
+\code{\link[=validate_stanmodel]{validate_stanmodel()}}
 }

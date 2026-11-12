@@ -36,11 +36,11 @@ several calls must use the same draws.}
 the draws are extracted (avoids leaking temp files across repeated calls).
 If supplied, the caller owns cleanup of \code{output_dir}.}
 
-\item{cache_compiled}{logical; if \code{TRUE} (default), the standalone-GQ model
-compiled from \code{x$model_code} is memoized per session (keyed by
-\code{model_code}) so repeated \code{gq()} calls on the same model skip
-\code{write_stan_file()}/\code{cmdstan_model()} after the first call. Set \code{FALSE}
-to force the original per-call recompile behavior.}
+\item{cache_compiled}{logical; \code{gq()} uses the model's own executable
+(\code{x$compiled_model}). Only when that file no longer exists (a model
+reloaded in a new R session) is the model recompiled from \code{x$model_code};
+with \code{TRUE} (default) that recompile is memoized per session. \code{FALSE}
+forces a fresh recompile in that case.}
 
 \item{draw_ids}{optional integer vector of posterior draw indices to use
 (overrides \code{n_draws}). Pass the same ids to every call whose outputs are

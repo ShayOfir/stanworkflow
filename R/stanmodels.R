@@ -113,19 +113,75 @@ print.sampler_params <- function(x, ...) {
 # --- stanmodel class ---
 
 #' Create a new stanmodel object
+#'
+#' All fields are declared here; they are filled step by step:
+#' \describe{
+#'   \item{set by `compile_from_string()` / `compile_from_file()`}{`compiled_model`
+#'     (CmdStanModel), `model_code` (character), `priors` (`priors`)}
+#'   \item{set by the user}{`sampler_params` (`sampler_params`)}
+#'   \item{set by `fit()`}{`fitted_model` (CmdStanMCMC; its CSV files live in a temp
+#'     folder and are gone after the R session ends; its internal copy of the draws
+#'     is removed after fitting), `draws` (posterior `draws`, the single persistent
+#'     copy), `sampler_diagnostics` (`draws` of divergent__, treedepth__, energy__),
+#'     `variables` (character), `data` (data frame), `stan_data`
+#'     (list passed to Stan), `extra` (list), `cond_df` (data frame or NULL),
+#'     `outcome_var` (character)}
+#' }
 #' @return an object of class `stanmodel`
+#' @seealso [validate_stanmodel()]
 #' @export
 stanmodel <- function() {
   structure(
     list(
+      # model
       compiled_model = NULL,
       model_code     = NULL,
       priors         = NULL,
       sampler_params = sampler_params(),
-      fitted_model   = NULL
+      # fit
+      fitted_model   = NULL,
+      draws          = NULL,
+      sampler_diagnostics = NULL,
+      variables      = NULL,
+      data           = NULL,
+      stan_data      = NULL,
+      extra          = NULL,
+      cond_df        = NULL,
+      outcome_var    = NULL
     ),
     class = "stanmodel"
   )
+}
+
+#' Check that a stanmodel's fields have the expected types
+#'
+#' Fields that are `NULL` (not yet filled) are accepted. Useful after loading
+#' a saved object or editing fields by hand.
+#' @param x an object to check
+#' @return `x`, invisibly; an error naming the offending fields otherwise
+#' @export
+validate_stanmodel <- function(x) {
+  if (!inherits(x, "stanmodel")) stop("`x` is not a stanmodel.", call. = FALSE)
+  ok <- function(v, test) is.null(v) || test(v)
+  checks <- c(
+    compiled_model = ok(x$compiled_model, function(v) inherits(v, "CmdStanModel") || is.list(v)),
+    model_code     = ok(x$model_code, function(v) is.character(v) && length(v) == 1L),
+    priors         = ok(x$priors, function(v) inherits(v, "priors")),
+    sampler_params = ok(x$sampler_params, function(v) inherits(v, "sampler_params")),
+    draws          = ok(x$draws, function(v) inherits(v, "draws")),
+    sampler_diagnostics = ok(x$sampler_diagnostics, function(v) inherits(v, "draws")),
+    variables      = ok(x$variables, is.character),
+    data           = ok(x$data, is.data.frame),
+    stan_data      = ok(x$stan_data, is.list),
+    extra          = ok(x$extra, is.list),
+    cond_df        = ok(x$cond_df, is.data.frame),
+    outcome_var    = ok(x$outcome_var, is.character)
+  )
+  if (!all(checks))
+    stop("Invalid stanmodel field(s): ", paste(names(checks)[!checks], collapse = ", "), call. = FALSE)
+  if (!is.null(x$draws) && is.null(x$stan_data))
+    stop("Invalid stanmodel: has draws but no stan_data.", call. = FALSE)
+  invisible(x)
 }
 
 #' Compile a stanmodel from a string of code
@@ -156,7 +212,7 @@ compile_from_file.stanmodel <- function(x, stan_file, ...) {
   x$model_code     <- model_code
   x$compiled_model <- cmdstanr::cmdstan_model(stan_file = stan_file, ...)
   x$priors         <- priors(grep("^prior_", .data_names(x), value = TRUE))
-  x
+  validate_stanmodel(x)
 }
 
 #' Build a Stan data list from a dataframe
@@ -359,11 +415,33 @@ fit.stanmodel <- function(x,
 
   # Draw posterior samples:
   x$draws <- x$fitted_model$draws()
+  x$sampler_diagnostics <- x$fitted_model$sampler_diagnostics()
+  .drop_cached_draws(x$fitted_model)
 
   x$variables <- .get_variables(x$draws)
-  return(x)
+  validate_stanmodel(x)
 }
 
+
+# x$draws is the single persistent copy of the draws: drop cmdstanr's internal
+# copy (same size) so it is neither kept in memory nor saved twice. In the same
+# session cmdstanr re-reads its CSVs if $draws()/$summary() are called directly.
+.drop_cached_draws <- function(fit) {
+  priv <- tryCatch(fit$.__enclos_env__$private, error = function(e) NULL)
+  if (is.environment(priv) && exists("draws_", envir = priv, inherits = FALSE))
+    assign("draws_", NULL, envir = priv)
+  invisible(fit)
+}
+
+# Divergences, max-treedepth hits and E-BFMI per chain from sampler diagnostics
+# (same definitions as cmdstanr's $diagnostic_summary()).
+.diagnostic_summary <- function(sd, max_treedepth = 10L) {
+  a <- posterior::as_draws_array(sd)
+  per_chain <- function(v, f) apply(a[, , v, drop = TRUE], 2, f)
+  list(num_divergent     = unname(per_chain("divergent__", sum)),
+       num_max_treedepth = unname(per_chain("treedepth__", function(t) sum(t >= max_treedepth))),
+       ebfmi             = unname(per_chain("energy__", function(e) sum(diff(e)^2) / length(e) / stats::var(e))))
+}
 
 # cmdstanr only warns when a chain dies (crash, exe blocked by antivirus) and
 # draws() then silently returns the surviving chains; fail loudly instead.
@@ -406,11 +484,11 @@ fit.stanmodel <- function(x,
 #'   `NULL` uses a fresh temp directory that is deleted automatically after
 #'   the draws are extracted (avoids leaking temp files across repeated calls).
 #'   If supplied, the caller owns cleanup of `output_dir`.
-#' @param cache_compiled logical; if `TRUE` (default), the standalone-GQ model
-#'   compiled from `x$model_code` is memoized per session (keyed by
-#'   `model_code`) so repeated `gq()` calls on the same model skip
-#'   `write_stan_file()`/`cmdstan_model()` after the first call. Set `FALSE`
-#'   to force the original per-call recompile behavior.
+#' @param cache_compiled logical; `gq()` uses the model's own executable
+#'   (`x$compiled_model`). Only when that file no longer exists (a model
+#'   reloaded in a new R session) is the model recompiled from `x$model_code`;
+#'   with `TRUE` (default) that recompile is memoized per session. `FALSE`
+#'   forces a fresh recompile in that case.
 #' @param ... additional arguments passed to methods
 #' @return draws object containing the generated quantities
 gq <- function(x, ...) UseMethod("gq")
@@ -426,19 +504,26 @@ gq <- function(x, ...) UseMethod("gq")
 #' @rdname gq
 #' @exportS3Method
 gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_compiled = TRUE, draw_ids = NULL, ...){
-  mod_gqp <- if (cache_compiled) .gq_model_cache[[x$model_code]] else NULL
-  if (is.null(mod_gqp)) {
-    gqp <- cmdstanr::write_stan_file(x$model_code)
-    mod_gqp <- cmdstanr::cmdstan_model(gqp)
-    if (cache_compiled) .gq_model_cache[[x$model_code]] <- mod_gqp
+  # Use the model's own executable. It lives in a temp folder, so after a saved
+  # model is reloaded in a new R session it is gone: then (and only then)
+  # recompile from model_code (memoized per session).
+  mod_gqp <- x$compiled_model
+  if (is.null(mod_gqp) || !inherits(mod_gqp, "CmdStanModel") ||
+      is.null(mod_gqp$exe_file()) || !file.exists(mod_gqp$exe_file())) {
+    mod_gqp <- if (cache_compiled) .gq_model_cache[[x$model_code]] else NULL
+    if (is.null(mod_gqp)) {
+      mod_gqp <- cmdstanr::cmdstan_model(cmdstanr::write_stan_file(x$model_code))
+      if (cache_compiled) .gq_model_cache[[x$model_code]] <- mod_gqp
+    }
   }
 
-  mod_fit <- x$fitted_model
+  # Parameters come from x$draws, the persistent copy (the CmdStan CSVs behind
+  # x$fitted_model are temp files).
+  mod_fit <- x$draws %||% x$fitted_model$draws()
   if (!is.null(draw_ids) || !is.null(n_draws)) {
-    draws_full <- mod_fit$draws()
     if (is.null(draw_ids))
-      draw_ids <- .sample_draw_ids(posterior::ndraws(draws_full), n_draws)
-    mod_fit <- posterior::subset_draws(draws_full, draw = draw_ids)
+      draw_ids <- .sample_draw_ids(posterior::ndraws(mod_fit), n_draws)
+    mod_fit <- posterior::subset_draws(mod_fit, draw = draw_ids)
   }
 
   pc <- x$sampler_params$parallel_chains %||% 4L
@@ -494,7 +579,12 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 }
 
 #' @keywords internal
-.interpret_coverage <- function(empirical, nominal) {
+.interpret_coverage <- function(empirical, nominal, prior = FALSE) {
+  # a prior predictive check has no likelihood: wide intervals are expected, so
+  # report the coverage without a calibration judgement
+  if (prior)
+    return(sprintf("prior predictive %.0f%% intervals cover %.1f%% of the observations",
+                   nominal * 100, empirical * 100))
   tol_lo <- nominal - 0.10
   tol_hi <- nominal + 0.05
   judgement <- dplyr::case_when(
@@ -524,7 +614,7 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 #' @param n_draws    number of draws to use for density overlay
 #' @return a `ppc_results` object
 #' @keywords internal
-.run_single_ppc <- function(y_obs, y_rep_mat, obs_var, n_draws = 50L) {
+.run_single_ppc <- function(y_obs, y_rep_mat, obs_var, n_draws = 50L, prior = FALSE) {
 
   n_available <- nrow(y_rep_mat)
   idx_draws   <- if (n_available <= n_draws) seq_len(n_available) else
@@ -594,6 +684,7 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
     coverage      = mapply(.interpret_coverage,
                            empirical = coverage,
                            nominal   = c(0.50, 0.90),
+                           MoreArgs  = list(prior = prior),
                            SIMPLIFY  = FALSE)
   )
 
@@ -788,6 +879,7 @@ ppc.stanmodel <- function(x,
   }
   if (is.null(x$draws))     stop("No draws found. Run `fit()` first.")
   if (is.null(x$stan_data)) stop("No stan_data found. Run `fit()` first.")
+  is_prior <- isTRUE(x$stan_data$skip_likelihood == 1L)   # prior predictive fit
 
   # ---- global filter (applies to all outcomes) ----------------------------
   global_filter_fn <- NULL
@@ -890,7 +982,7 @@ ppc.stanmodel <- function(x,
     # No grouping -> single PPC
     # =========================================================================
     if (is.null(.by)) {
-      return(.run_single_ppc(y_obs, y_rep_mat, obs_var, n_draws))
+      return(.run_single_ppc(y_obs, y_rep_mat, obs_var, n_draws, prior = is_prior))
     }
 
     # =========================================================================
@@ -951,7 +1043,7 @@ ppc.stanmodel <- function(x,
         lbl     <- paste(paste(.by, unlist(grp_row), sep = "="), collapse = " | ")
         .run_single_ppc(y_obs_g, y_rep_g,
                         sprintf("%s [%s]", obs_var, lbl),
-                        n_draws)
+                        n_draws, prior = is_prior)
       }
     )
 
@@ -1316,14 +1408,12 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
     stop("`x` must be a stanmodel object.")
   }
 
-  if (is.null(x$fitted_model)) {
-    stop("Model has not been fitted yet. Run `fit()` first.")
-  } else {
-    fit <- x$fitted_model
-  }
+  if (is.null(x$draws)) stop("Model has not been fitted yet. Run `fit()` first.")
 
-
-    diag  <- fit$diagnostic_summary()
+  # stored sampler diagnostics; models saved before they existed fall back to cmdstanr
+  diag <- if (!is.null(x$sampler_diagnostics))
+    .diagnostic_summary(x$sampler_diagnostics, x$sampler_params$max_treedepth %||% 10L)
+  else x$fitted_model$diagnostic_summary()
     div   <- diag$num_divergent
     td    <- diag$num_max_treedepth
     ebfmi <- diag$ebfmi

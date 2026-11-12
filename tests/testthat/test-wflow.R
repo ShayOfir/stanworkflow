@@ -192,3 +192,26 @@ parameters { vector[K] b; } model { b ~ normal(prior_loc, prior_sd); }",
   expect_equal(wf$compiled$priors$prior_loc, c(0, 0.5, 1))
   expect_equal(wf$compiled$priors$prior_sd, 2)
 })
+
+test_that("tune() uses the wflow's prior sampler settings; an argument overrides them", {
+  skip_if_no_cmdstan()
+  wf <- wflow("tm", models_folder = tm_models,
+              prior_sampler_params_list = list(chains = 2L, parallel_chains = 2L,
+                                               iter_warmup = 100L, iter_sampling = 50L))
+  wf <- attach_data(wf, tm_data())
+  expect_no_warning(wf1 <- quiet(tune(wf)), message = "sampler_params")
+  expect_equal(posterior::ndraws(wf1$prior_fit$draws), 100L)          # 2 chains x 50
+  wf2 <- quiet(tune(wf, sampler_params = list(iter_sampling = 30L)))
+  expect_equal(posterior::ndraws(wf2$prior_fit$draws), 60L)
+})
+
+test_that("prior check reports coverage neutrally; accept_priors() and set_as_tuned() are the same", {
+  skip_if_no_cmdstan()
+  sp <- sampler_params(modifyList(sampler_params(), tm_sampler))
+  wf <- quiet(tune(new_wf() |> attach_data(tm_data()), sampler_params = sp))
+  txt <- unlist(wf$prior_ppc_results$y$interpretation$coverage)
+  expect_match(txt, "^prior predictive (50|90)% intervals cover")
+  expect_false(any(grepl("likelihood|calibrated", txt)))
+  expect_true(accept_priors(wf)$tuned)
+  expect_identical(set_as_tuned(wf), accept_priors(wf))
+})

@@ -33,6 +33,7 @@ make_mock_draws <- function(n = 10) {
 
 make_compiled_mock <- function(n = 10) {
   fitted_mock <- list(draws = function(...) make_mock_draws(n),
+                      sampler_diagnostics = function(...) NULL,
                       return_codes = function() 0L,
                       num_chains = function() 4L,
                       output_files = function(...) character(4))
@@ -80,6 +81,18 @@ test_that("stanmodel creates correct structure", {
   expect_null(m$priors)
   expect_null(m$fitted_model)
   expect_s3_class(m$sampler_params, "sampler_params")
+})
+
+test_that("stanmodel() declares every field and validate_stanmodel() checks types", {
+  m <- stanmodel()
+  expect_named(m, c("compiled_model", "model_code", "priors", "sampler_params", "fitted_model",
+                    "draws", "sampler_diagnostics", "variables", "data", "stan_data", "extra", "cond_df", "outcome_var"))
+  expect_identical(validate_stanmodel(m), m)
+  bad <- m; bad$priors <- list(prior_a = 1); bad$data <- "not a df"
+  expect_error(validate_stanmodel(bad), "priors, data")
+  bad <- m; bad$draws <- make_mock_draws()
+  expect_error(validate_stanmodel(bad), "draws but no stan_data")
+  expect_error(validate_stanmodel(list()), "not a stanmodel")
 })
 
 # ---- compile_from_string ----------------------------------------------------
@@ -458,6 +471,49 @@ test_that("gq() with cache_compiled = FALSE reproduces original per-call recompi
   out <- gq(m, new_data = m$stan_data, cache_compiled = FALSE)
 
   expect_equal(posterior::ndraws(out), posterior::ndraws(m$fitted_model$draws()))
+})
+
+test_that("gq() works on a reloaded model: no executable, no CmdStan CSVs, only model_code + draws", {
+  skip_if_no_cmdstan()
+  m   <- tm_fit()
+  ids <- 1:20
+  ref <- gq(m, new_data = m$stan_data, draw_ids = ids)          # uses m$compiled_model
+  reloaded <- m
+  reloaded$compiled_model <- NULL                                # executable gone (new session)
+  reloaded$fitted_model   <- NULL                                # CSVs gone
+  out <- gq(reloaded, new_data = m$stan_data, draw_ids = ids)
+  v <- grep("^mu_rep", posterior::variables(ref), value = TRUE)
+  expect_equal(posterior::as_draws_matrix(out)[, v], posterior::as_draws_matrix(ref)[, v])
+})
+
+test_that("one copy of the draws: cmdstanr's internal copy is dropped after fit()", {
+  skip_if_no_cmdstan()
+  m <- fit(tm_compiled(), data = tm_data(), sampler_params = fast2)   # fresh fit (tm_fit() is shared)
+  expect_null(m$fitted_model$.__enclos_env__$private$draws_)
+  expect_s3_class(m$sampler_diagnostics, "draws")
+  # in the same session cmdstanr can still re-read its CSVs
+  expect_equal(posterior::ndraws(m$fitted_model$draws("sigma")), posterior::ndraws(m$draws))
+})
+
+test_that("stored sampler diagnostics give cmdstanr's diagnostic_summary()", {
+  skip_if_no_cmdstan()
+  m   <- tm_fit()
+  own <- stanworkflow:::.diagnostic_summary(m$sampler_diagnostics, m$sampler_params$max_treedepth)
+  ref <- m$fitted_model$diagnostic_summary()
+  expect_equal(own$num_divergent, ref$num_divergent)
+  expect_equal(own$num_max_treedepth, ref$num_max_treedepth)
+  expect_equal(own$ebfmi, ref$ebfmi, tolerance = 1e-8)
+})
+
+test_that("a reloaded model (no CmdStan files) works downstream from x$draws alone", {
+  skip_if_no_cmdstan()
+  m <- tm_fit()
+  r <- m; r$fitted_model <- NULL                       # as after loading in a new session
+  expect_output(diagnose(r, params = "sigma"), "Divergences")
+  expect_s3_class(suppressMessages(ppc(r)), "ppc_results")
+  expect_equal(suppressWarnings(loo_cv(r))$loo$estimates,      # high Pareto k on the tiny model
+               suppressWarnings(loo_cv(m))$loo$estimates)
+  expect_error(suppressWarnings(loo_cv(r, moment_matching = TRUE)), "CmdStan fit of this session")
 })
 
 test_that("fit() keeps all chains when set.seed() repeats within a minute", {

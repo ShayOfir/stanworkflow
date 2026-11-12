@@ -168,78 +168,83 @@ run_predictive_checks <- function(wf,...) UseMethod("run_predictive_checks")
 #' @rdname run_predictive_checks
 #' @exportS3Method
 run_predictive_checks.wflow <- function(wf, prior_predictive = TRUE, sampler_params = NULL,  ...) {
+  if (prior_predictive) .prior_check(wf, sampler_params, ...) else .posterior_check(wf, ...)
+}
 
-  if (prior_predictive){
-      .check_data(wf)
-      .check_compiled(wf)
-    
-      wf$prior_fit <- wf$compiled
-      if (inherits(sampler_params,'sampler_params'))
-        {
-        wf$prior_fit$sampler_params <- wf$prior_fit$sampler_params |> modifyList(sampler_params)
-        }
-      else {
-        warning('Prior sampler_params is not a `sampler_params` class.\n')
-      }
-
-      message("Running prior predictive checks for '", wf$model_name, "'...")
-      wf$prior_fit <- wf$prior_fit |>
-        fit(
-          data             = wf$data$data,
-          extra            = wf$data$extra,
-          cond_df          = wf$data$cond_df,
-          outcome_var      = wf$data$outcome_var,
-          prior_predictive = TRUE,
-        )
-
-
-      wf$prior_ppc_results <- wf$prior_fit |> ppc(...)
-      if (inherits(wf$prior_ppc_results, "ppc_results_grouped") || inherits(wf$prior_ppc_results, "ppc_results")) {
-        wf$prior_ppc_results <- list(wf$prior_ppc_results)
-        names(wf$prior_ppc_results) <- wf$data$outcome_var
-      }
-      wf$prior_log <- c(wf$prior_log %||% list(), list(.prior_log_entry(wf)))
-      for (i in seq_along(wf$prior_ppc_results)) {
-        cat(sprintf("Prior predictive check for outcome '%s':\n", names(wf$prior_ppc_results)[i]))
-        if (inherits(wf$prior_ppc_results[[i]], "ppc_results_grouped")) {
-          wf$prior_ppc_results[[i]] |> display()
-        } else {
-          wf$prior_ppc_results[[i]] |> print(plot = TRUE)
-        }
-      }
-  } else {
-      message("Performing posterior predictive checks '", wf$model_name, "'.")
-      if (is.null(wf$post_fit) || !inherits(wf$post_fit, "stanmodel")) {
-        stop("Posterior fit not found or not as `stanmodel`. Please run `fit_posterior()` first.")
-      }
-      wf$posterior_ppc_results <- wf$post_fit |> ppc(...)
-      if (inherits(wf$posterior_ppc_results, "ppc_results_grouped") || inherits(wf$posterior_ppc_results, "ppc_results")) {
-        wf$posterior_ppc_results <- list(wf$posterior_ppc_results)
-        names(wf$posterior_ppc_results) <- wf$data$outcome_var
-      }
-      for (i in seq_along(wf$posterior_ppc_results)) {
-        cat(sprintf("Posterior predictive check for outcome '%s':\n", names(wf$posterior_ppc_results)[i]))
-        if (inherits(wf$posterior_ppc_results[[i]], "ppc_results_grouped")) {
-          wf$posterior_ppc_results[[i]] |> display()
-        } else {
-          wf$posterior_ppc_results[[i]] |> print(plot = TRUE)
-        }
-      }
+# print each outcome's predictive-check results
+.print_checks <- function(results, label) {
+  for (i in seq_along(results)) {
+    cat(sprintf("%s predictive check for outcome '%s':
+", label, names(results)[i]))
+    if (inherits(results[[i]], "ppc_results_grouped")) display(results[[i]])
+    else print(results[[i]], plot = TRUE)
   }
+}
 
-  
+# ppc() returns one result or a named list per outcome; always return the list
+.as_outcome_list <- function(res, outcome_var) {
+  if (inherits(res, c("ppc_results_grouped", "ppc_results")))
+    res <- stats::setNames(list(res), outcome_var)
+  res
+}
+
+#' @keywords internal
+.prior_check <- function(wf, sampler_params = NULL, ...) {
+  .check_data(wf)
+  .check_compiled(wf)
+  # the wflow's prior sampler settings; a `sampler_params` (or list) argument overrides them
+  sp <- wf$prior_sampler_params %||% wf$compiled$sampler_params
+  if (!is.null(sampler_params)) sp <- modifyList(sp, as.list(sampler_params))
+  wf$prior_fit <- wf$compiled
+  wf$prior_fit$sampler_params <- sampler_params(as.list(sp))
+
+  message("Running prior predictive checks for '", wf$model_name, "'...")
+  wf$prior_fit <- wf$prior_fit |>
+    fit(
+      data             = wf$data$data,
+      extra            = wf$data$extra,
+      cond_df          = wf$data$cond_df,
+      outcome_var      = wf$data$outcome_var,
+      prior_predictive = TRUE
+    )
+  wf$prior_ppc_results <- .as_outcome_list(ppc(wf$prior_fit, ...), wf$data$outcome_var)
+  wf$prior_log <- c(wf$prior_log %||% list(), list(.prior_log_entry(wf)))
+  .print_checks(wf$prior_ppc_results, "Prior")
   wf
-  }
+}
 
-# --- set_as_tuned -------------------------------------------------------------
-#' Mark the wflow as having tuned hyperpriors
-#' @param wf a `wflow` object
-#' @return the `wflow` with `$tuned` set to TRUE
+#' @keywords internal
+.posterior_check <- function(wf, ...) {
+  message("Performing posterior predictive checks '", wf$model_name, "'.")
+  if (is.null(wf$post_fit) || !inherits(wf$post_fit, "stanmodel"))
+    stop("Posterior fit not found or not as `stanmodel`. Please run `fit_posterior()` first.")
+  wf$posterior_ppc_results <- .as_outcome_list(ppc(wf$post_fit, ...), wf$data$outcome_var)
+  .print_checks(wf$posterior_ppc_results, "Posterior")
+  wf
+}
+
+# --- accept_priors -------------------------------------------------------------
+#' Accept the priors after the prior predictive check
+#'
+#' Prior tuning is interactive: set the prior values, run `tune()`, look at the
+#' prior predictive check, change the values, repeat. When the check looks
+#' right, `accept_priors()` records that decision: the wflow (or the regimen's
+#' wflow) is marked as tuned and the last `prior_log()` entry as accepted.
+#' Fitting without accepted priors gives a warning. `set_as_tuned()` is the
+#' earlier name of the same function.
+#' @param wf a `wflow` or a `regimen`
+#' @param ... unused
+#' @return the object with accepted priors (a regimen also re-saves its prior file)
 #' @export
-set_as_tuned <- function(wf) UseMethod("set_as_tuned")
+accept_priors <- function(wf, ...) UseMethod("accept_priors")
 
+#' @rdname accept_priors
+#' @export
+set_as_tuned <- function(wf, ...) accept_priors(wf, ...)
+
+#' @rdname accept_priors
 #' @exportS3Method
-set_as_tuned.wflow <- function(wf) {
+accept_priors.wflow <- function(wf, ...) {
   wf$tuned <- TRUE
   n <- length(wf$prior_log)
   if (n) wf$prior_log[[n]]$accepted <- TRUE   # the priors of the last prior check were accepted
@@ -682,7 +687,7 @@ load_wflow <- function(path) {
 #' @keywords internal
 .model_not_tunned_msg <- function(model_name) {
   sprintf(
-    "Model '%s' has not been marked as tuned. Consider running `tune()` first.\n When you are satisfied with the hyperpriors, call `set_as_tuned()` to mark the wflow as tuned.\n",
+    "Model '%s' has not been marked as tuned: its priors were not accepted. Run `tune()`, look at the prior predictive check, then call `accept_priors()`.\n",
     model_name
   )
 }
