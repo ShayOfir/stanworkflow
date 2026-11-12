@@ -593,3 +593,24 @@ test_that("provenance: every fit has a recorded seed; refitting with it reproduc
   expect_identical(posterior::as_draws_array(f2$draws), posterior::as_draws_array(f1$draws))
   expect_output(print(f2), "provenance: seed")
 })
+
+test_that("compile warns about prior_* values that the model never uses", {
+  code <- "
+data {
+  int<lower=1> N; vector[N] y;
+  real prior_b0_mean;          // declared ...
+  real<lower=0> prior_b0_sd;
+  real<lower=0> prior_sigma_rate;
+}
+parameters { real<lower=0> sigma; }
+model {
+  // prior_b0_mean only appears in this comment
+  /* and here: prior_b0_sd */
+  sigma ~ exponential(prior_sigma_rate);
+  y ~ normal(0, sigma);
+}"
+  expect_warning(u <- stanworkflow:::.warn_unused_priors(c("prior_b0_mean", "prior_b0_sd", "prior_sigma_rate"), code),
+                 "not used anywhere in the model: prior_b0_mean, prior_b0_sd")
+  expect_equal(u, c("prior_b0_mean", "prior_b0_sd"))
+  expect_no_warning(stanworkflow:::.warn_unused_priors("prior_sigma_rate", code))
+})

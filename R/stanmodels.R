@@ -68,6 +68,23 @@
   as.integer(factor(x, levels = lv))
 }
 
+# A prior value that is declared but never used is usually a modelling bug
+# (e.g. an intercept dropped when a hierarchical term was added): each prior_*
+# name must appear somewhere besides its own declaration (comments ignored).
+#' @keywords internal
+.warn_unused_priors <- function(prior_names, model_code) {
+  if (!length(prior_names)) return(invisible(character()))
+  code <- gsub("(?s)/\\*.*?\\*/", " ", model_code, perl = TRUE)   # block comments
+  code <- gsub("//[^\n]*|#[^\n]*", " ", code)                      # line comments
+  n_uses <- vapply(prior_names, function(nm)
+    lengths(regmatches(code, gregexpr(paste0("\\b", nm, "\\b"), code, perl = TRUE))), integer(1))
+  unused <- prior_names[n_uses <= 1L]
+  if (length(unused))
+    warning(sprintf("Prior value(s) declared but not used anywhere in the model: %s. Is a prior (or a parameter) missing?",
+                    paste(unused, collapse = ", ")), call. = FALSE)
+  invisible(unused)
+}
+
 # --- priors class ----
 
 #' Create a new priors object
@@ -218,6 +235,7 @@ compile_from_file.stanmodel <- function(x, stan_file, ...) {
   x$model_code     <- model_code
   x$compiled_model <- cmdstanr::cmdstan_model(stan_file = stan_file, ...)
   x$priors         <- priors(grep("^prior_", .data_names(x), value = TRUE))
+  .warn_unused_priors(names(x$priors), model_code)
   validate_stanmodel(x)
 }
 

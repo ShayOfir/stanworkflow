@@ -51,6 +51,8 @@
   refitting with `seed = x$provenance$seed` reproduces the draws.
 * `wflow()`: prior predictive checks default to 500 + 500 draws (as in
   `regimen()`).
+* Compiling warns about `prior_*` data values that the model never uses
+  (usually a missing prior or parameter).
 * Clearer names: `parameter_draws()` / `parameter_scenarios()` are now the
   functions; `ppc_by_parameter()` / `ppc_scenarios()` still work but are
   deprecated (they summarise parameter draws, not predictive checks).
