@@ -11,3 +11,6 @@ tests/testthat/Rplots.pdf
 /doc/
 /Meta/
 inst/doc
+# local dev files (backed up in private repo ShayOfir/brainverse-dev)
+CLAUDE.md
+reports/
