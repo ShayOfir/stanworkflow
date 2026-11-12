@@ -10,7 +10,11 @@
 #'
 #' @param model_name   character; name of a subfolder under `models_folder`
 #'   containing `model_code.stan`, `priors.csv`, and optionally
-#'   `diagnostics_params.csv`.
+#'   `diagnostics_params.csv`. `priors.csv` has two columns (prior name,
+#'   value), one row per `prior_*` data variable; a vector prior is written in
+#'   one cell with values separated by `;` (e.g. `"0; 0.5"`). Matrix priors are
+#'   set in R (`wf$compiled$priors$prior_x <- matrix(...)`). Names the model
+#'   does not declare give a warning and are ignored.
 #' @param models_folder character; root folder for model definitions
 #'   (default `"./models/"`).
 #' @param prior_sampler_params_list named list of overrides for `sampler_params()`.
@@ -37,9 +41,11 @@ wflow <- function(model_name,
   # ---- load priors ---------------------------------------------------------
   priors_file <- file.path(model_dir, "priors.csv")
   priors_list <- if (file.exists(priors_file)) {
-    read.csv(priors_file) |>
+    # a cell may hold a vector as "0; 0.5; 1" (one value per group/coefficient)
+    read.csv(priors_file, colClasses = "character") |>
       tibble::deframe() |>
-      as.list()
+      as.list() |>
+      lapply(function(v) as.numeric(trimws(strsplit(v, ";", fixed = TRUE)[[1]])))
   } else {
     message(sprintf("No priors.csv found in '%s'; priors will need to be set manually.", model_dir))
     list()
@@ -56,7 +62,13 @@ wflow <- function(model_name,
   # ---- compile -------------------------------------------------------------
 
   compiled <- stanmodel() |> compile_from_file(stan_file)
-  compiled$priors <- modifyList(compiled$priors, priors_list)
+  # names the model does not declare are usually leftovers from a switched
+  # prior family (e.g. beta(a, b) -> normal(mean, sd)): warn and ignore them
+  unknown <- setdiff(names(priors_list), names(compiled$priors))
+  if (length(unknown))
+    warning(sprintf("priors.csv in '%s' has value(s) the model does not declare (ignored): %s",
+                    model_dir, paste(unknown, collapse = ", ")), call. = FALSE)
+  compiled$priors <- modifyList(compiled$priors, priors_list[setdiff(names(priors_list), unknown)])
 
   # ---- sampler params ------------------------------------------------------
   prior_sp <- if (!is.null(prior_sampler_params_list)) {
@@ -84,6 +96,7 @@ wflow <- function(model_name,
       data               = NULL,            # data list: $data, $cond_df, $extra
       diagnostics        = NULL,            # output of diagnose()
       inference          = list(),          # named list of infer_contrasts() results
+      prior_log          = list(),          # one entry per prior predictive run (see prior_log())
       tuned             = FALSE             # whether hyperpriors have been tuned
     ),
     class = "wflow"
@@ -185,6 +198,7 @@ run_predictive_checks.wflow <- function(wf, prior_predictive = TRUE, sampler_par
         wf$prior_ppc_results <- list(wf$prior_ppc_results)
         names(wf$prior_ppc_results) <- wf$data$outcome_var
       }
+      wf$prior_log <- c(wf$prior_log %||% list(), list(.prior_log_entry(wf)))
       for (i in seq_along(wf$prior_ppc_results)) {
         cat(sprintf("Prior predictive check for outcome '%s':\n", names(wf$prior_ppc_results)[i]))
         if (inherits(wf$prior_ppc_results[[i]], "ppc_results_grouped")) {
@@ -227,7 +241,60 @@ set_as_tuned <- function(wf) UseMethod("set_as_tuned")
 #' @exportS3Method
 set_as_tuned.wflow <- function(wf) {
   wf$tuned <- TRUE
+  n <- length(wf$prior_log)
+  if (n) wf$prior_log[[n]]$accepted <- TRUE   # the priors of the last prior check were accepted
   wf
+}
+
+# ---- prior tuning log -------------------------------------------------------
+
+# One log entry per prior predictive run: prior values, compact PPC numbers and
+# only the minimal plots (density overlay, mean-sd), per group when grouped.
+#' @keywords internal
+.prior_log_entry <- function(wf) {
+  keep <- c("density_overlay", "mean_sd_2d")
+  compact <- function(res) {
+    if (inherits(res, "ppc_results_grouped"))
+      return(list(summary = as.data.frame(res$summary),
+                  plots   = lapply(res$group_results, function(g) g$plots[intersect(keep, names(g$plots))])))
+    list(summary = as.data.frame(as.list(c(stats::setNames(res$bayes_pvalues, paste0("p_B_", names(res$bayes_pvalues))),
+                                           stats::setNames(res$coverage, paste0("cov_", names(res$coverage))))),
+                                 check.names = FALSE),
+         plots   = res$plots[intersect(keep, names(res$plots))])
+  }
+  ppc <- lapply(wf$prior_ppc_results, compact)
+  list(time     = Sys.time(),
+       priors   = as.list(Filter(Negate(is.na), unclass(wf$prior_fit$priors))),
+       accepted = FALSE,
+       summary  = lapply(ppc, `[[`, "summary"),
+       plots    = lapply(ppc, `[[`, "plots"))
+}
+
+#' Prior tuning log
+#'
+#' Each prior predictive run (`tune()`, `run_predictive_checks()`) records the
+#' prior values used, the predictive-check numbers and the minimal plots
+#' (density overlay and mean-SD). `set_as_tuned()` marks the last run as accepted.
+#'
+#' @param wf a `wflow` (or a `regimen`, whose `$wf` is used)
+#' @param plots logical; also return the stored ggplot objects (default FALSE)
+#' @return a data frame with one row per run, outcome and group: `run`, `time`,
+#'   `accepted`, one column per prior (vector values pasted with ", "),
+#'   `outcome` and the predictive-check columns. With `plots = TRUE`, a list
+#'   with `table` and `plots` (`plots[[run]][[outcome]]`).
+#' @export
+prior_log <- function(wf, plots = FALSE) {
+  if (inherits(wf, "regimen")) wf <- wf$wf
+  log <- wf$prior_log %||% list()
+  rows <- lapply(seq_along(log), function(i) {
+    e  <- log[[i]]
+    pv <- lapply(e$priors, function(v) if (length(v) > 1) paste(v, collapse = ", ") else v)
+    head <- data.frame(run = i, time = e$time, accepted = e$accepted, pv, check.names = FALSE)
+    dplyr::bind_rows(lapply(names(e$summary), function(o)
+      cbind(head, outcome = o, e$summary[[o]], row.names = NULL)))
+  })
+  tab <- dplyr::bind_rows(rows)
+  if (plots) list(table = tab, plots = lapply(log, `[[`, "plots")) else tab
 }
 
 # ---- fit_posterior ----------------------------------------------------------

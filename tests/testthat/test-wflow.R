@@ -146,3 +146,49 @@ test_that("ppc_by_parameter() labels a vector parameter by factor level", {
   expect_equal(nrow(w), 400)
   expect_true(all(c("FLEX", "EXT") %in% names(w)))
 })
+
+test_that("wflow() warns about priors.csv values the model does not declare, and ignores them", {
+  skip_if_no_cmdstan()
+  root <- tempfile("models"); dir.create(file.path(root, "tm"), recursive = TRUE)
+  file.copy(file.path(tm_models, "tm", "model_code.stan"), file.path(root, "tm"))
+  write.csv(data.frame(name = c("prior_b_sd", "prior_b_alpha"), value = c(2, 1)),
+            file.path(root, "tm", "priors.csv"), row.names = FALSE)
+  expect_warning(wf <- wflow("tm", models_folder = root), "does not declare.*prior_b_alpha")
+  expect_named(wf$compiled$priors, "prior_b_sd")
+  expect_equal(wf$compiled$priors$prior_b_sd, 2)
+})
+
+test_that("prior_log() records each prior check; set_as_tuned() marks the last one accepted", {
+  skip_if_no_cmdstan()
+  sp <- sampler_params(modifyList(sampler_params(), tm_sampler))
+  wf <- new_wf() |> attach_data(tm_data())
+  wf <- quiet(tune(wf, sampler_params = sp))
+  wf$compiled$priors$prior_b_sd <- 0.5                      # user changes a prior and re-checks
+  wf <- quiet(tune(wf, sampler_params = sp, .by = "group"))
+  wf <- set_as_tuned(wf)
+
+  tab <- prior_log(wf)
+  expect_equal(unique(tab$run), 1:2)
+  expect_equal(tab$prior_b_sd[tab$run == 1], 2)
+  expect_equal(unique(tab$prior_b_sd[tab$run == 2]), 0.5)
+  expect_equal(as.vector(tapply(tab$accepted, tab$run, unique)), c(FALSE, TRUE))
+  expect_true(all(c("outcome", "p_B_mean", "cov_50%") %in% names(tab)))
+  expect_equal(sum(tab$run == 2), nlevels(tm_data()$group))  # one row per group when grouped
+
+  lg <- prior_log(wf, plots = TRUE)
+  expect_named(lg$plots[[1]]$y, c("density_overlay", "mean_sd_2d"))
+  expect_s3_class(lg$plots[[2]]$y[[1]]$density_overlay, "ggplot")
+})
+
+test_that("priors.csv: a vector prior is written in one cell, separated by ';'", {
+  skip_if_no_cmdstan()
+  root <- tempfile("models"); dir.create(file.path(root, "vp"), recursive = TRUE)
+  writeLines("data { int<lower=1> K; vector[K] prior_loc; real<lower=0> prior_sd; }
+parameters { vector[K] b; } model { b ~ normal(prior_loc, prior_sd); }",
+             file.path(root, "vp", "model_code.stan"))
+  write.csv(data.frame(name = c("prior_loc", "prior_sd"), value = c("0; 0.5;1", "2")),
+            file.path(root, "vp", "priors.csv"), row.names = FALSE)
+  wf <- wflow("vp", models_folder = root)
+  expect_equal(wf$compiled$priors$prior_loc, c(0, 0.5, 1))
+  expect_equal(wf$compiled$priors$prior_sd, 2)
+})

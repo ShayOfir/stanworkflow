@@ -11,6 +11,13 @@
   coding. Mixed-case character levels (e.g. "a" vs "B") may now be numbered
   differently than before on Windows.
 * Unfilled Stan data variables are reported once, as a message.
+* New `prior_log()`: every prior predictive run (`tune()`,
+  `run_predictive_checks()`) records the prior values, the predictive-check
+  numbers and the density-overlay and mean-SD plots; `set_as_tuned()` marks
+  the last run as accepted.
+* `priors.csv`: a vector prior is written in one cell, values separated by
+  `;`. Names the model does not declare give a warning and are ignored
+  (e.g. leftovers after switching a prior family).
 
 # stanworkflow 0.1.0
 

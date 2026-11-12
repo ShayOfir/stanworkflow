@@ -14,7 +14,11 @@ wflow(
 \arguments{
 \item{model_name}{character; name of a subfolder under \code{models_folder}
 containing \code{model_code.stan}, \code{priors.csv}, and optionally
-\code{diagnostics_params.csv}.}
+\code{diagnostics_params.csv}. \code{priors.csv} has two columns (prior name,
+value), one row per \verb{prior_*} data variable; a vector prior is written in
+one cell with values separated by \verb{;} (e.g. \code{"0; 0.5"}). Matrix priors are
+set in R (\code{wf$compiled$priors$prior_x <- matrix(...)}). Names the model
+does not declare give a warning and are ignored.}
 
 \item{models_folder}{character; root folder for model definitions
 (default \code{"./models/"}).}
