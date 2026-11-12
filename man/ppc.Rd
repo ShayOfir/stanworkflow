@@ -10,6 +10,7 @@ ppc(x, ...)
 \method{ppc}{stanmodel}(
   x,
   n_draws = 50L,
+  stats = NULL,
   data = NULL,
   filter_expr = NULL,
   filter_fn = NULL,
@@ -25,6 +26,12 @@ ppc(x, ...)
 \item{...}{additional arguments passed to methods}
 
 \item{n_draws}{number of y_rep draws for the density overlay (default 50)}
+
+\item{stats}{optional named list of extra test statistics, each a function of
+the data vector returning one number, e.g.
+\code{list(prop_zero = function(y) mean(y == 0))}. Added to the six defaults
+(mean, sd, median, mad, min, max); a default name is replaced. Choose
+statistics that target what the model might miss (Gelman et al. 2020).}
 
 \item{data}{optional dataframe to use for filtering; if NULL, uses \code{x$data}}
 

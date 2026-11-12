@@ -101,8 +101,11 @@ tm_fit <- function() {
 tm_draws <- function(m, var) posterior::as_draws_df(posterior::subset_draws(m$draws, var))
 
 # infer_contrasts() prints progress; keep test output clean.
+# silences console output, messages and the convergence warnings of the tiny
+# test model (2 chains x 200 draws); every other warning still reaches the test
 quiet <- function(expr) {
   out <- NULL
-  utils::capture.output(out <- suppressMessages(expr))
+  utils::capture.output(out <- withCallingHandlers(suppressMessages(expr),
+    stanworkflow_convergence_warning = function(w) invokeRestart("muffleWarning")))
   out
 }

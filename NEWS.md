@@ -34,6 +34,16 @@
 * `gq()` uses the model's own executable (recompiles only for a reloaded
   model) and takes the parameters from `x$draws`.
 * `stanmodel()` declares all fields; new `validate_stanmodel()`.
+* `ppc(stats =)`: extra test statistics (named functions of the data);
+  prior checks show p-values without misfit labels.
+* Read-only `ppc()` (`type = "posterior"|"prior"`) and `diagnose()` methods
+  for `wflow` and `regimen` (a regimen reads its checkpoint files if needed).
+* `diagnose()` returns a `stanworkflow_diagnostics` object (all checks, with a
+  print method), checks bulk and tail ESS against 100 per chain, defaults to
+  the model's parameters, and warns (class `stanworkflow_convergence_warning`)
+  when a check fails; the warning is repeated when inference is run.
+  `wf$diagnostics` now holds this object (its `$summary` is the former table).
+* `fit()` stops when fewer chains come back than were requested.
 * `priors.csv`: a vector prior is written in one cell, values separated by
   `;`. Names the model does not declare give a warning and are ignored
   (e.g. leftovers after switching a prior family).

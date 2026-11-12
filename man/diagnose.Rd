@@ -20,7 +20,11 @@ diagnose(x, ...)
 \item{plot}{logical; if TRUE, renders traceplots for specified parameters (default FALSE)}
 }
 \value{
-a data frame summarizing convergence diagnostics for each parameter
+a \code{stanworkflow_diagnostics} object (printed with all checks):
+\code{summary} (mean, sd, R-hat, bulk/tail ESS per parameter), \code{divergent},
+\code{max_treedepth}, \code{ebfmi} (per chain), the flagged parameters, \code{thresholds}
+(R-hat 1.01; ESS 100 per chain; E-BFMI 0.3), \code{problems} and \code{ok}. Failed
+checks also give a warning, repeated when inference is run on the fit.
 }
 \description{
 Convergence diagnostics for fitted stanmodel

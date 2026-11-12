@@ -333,6 +333,34 @@ accept_priors.regimen <- function(wf, ...) {
   wf
 }
 
+#' @rdname wflow_checks
+#' @exportS3Method
+ppc.regimen <- function(x, type = c("posterior", "prior"), ...) {
+  type <- match.arg(type)
+  args <- list(...)
+  # the regimen's own PPC settings are the defaults
+  if (is.null(args$.by))      args$.by      <- x$ppc_by
+  if (is.null(args$outcomes)) args$outcomes <- x$ppc_outcomes
+  do.call(ppc, c(list(.regimen_wflow(x, type)), type = type, args))
+}
+
+#' @rdname wflow_checks
+#' @exportS3Method
+diagnose.regimen <- function(x, ...) diagnose(.regimen_wflow(x, "posterior"), ...)
+
+# the regimen's wflow holding the requested fit: in memory, or read from its
+# checkpoint file (prior / posterior) without changing the regimen
+#' @keywords internal
+.regimen_wflow <- function(x, type) {
+  slot <- if (type == "prior") "prior_fit" else "post_fit"
+  if (!is.null(x$wf) && !is.null(x$wf[[slot]])) return(x$wf)
+  path <- if (type == "prior") x$paths$prior else x$paths$posterior
+  if (!file.exists(path))
+    stop(sprintf("No %s fit: run the %s step first.", type, if (type == "prior") "tune" else "fit"),
+         call. = FALSE)
+  suppressMessages(load_wflow(path))
+}
+
 # ---- infer ------------------------------------------------------------------
 
 #' Run inference for all contrasts in a regimen

@@ -415,6 +415,11 @@ fit.stanmodel <- function(x,
 
   # Draw posterior samples:
   x$draws <- x$fitted_model$draws()
+  # return code 0 does not guarantee every chain was read (finger-paper audit: 3 of 4)
+  n_req <- sampler_params$chains
+  if (!is.null(n_req) && posterior::nchains(x$draws) != n_req)
+    stop(sprintf("Expected %d chains but got %d; refusing to continue with a partial set of draws.",
+                 as.integer(n_req), posterior::nchains(x$draws)), call. = FALSE)
   x$sampler_diagnostics <- x$fitted_model$sampler_diagnostics()
   .drop_cached_draws(x$fitted_model)
 
@@ -614,7 +619,8 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 #' @param n_draws    number of draws to use for density overlay
 #' @return a `ppc_results` object
 #' @keywords internal
-.run_single_ppc <- function(y_obs, y_rep_mat, obs_var, n_draws = 50L, prior = FALSE) {
+.run_single_ppc <- function(y_obs, y_rep_mat, obs_var, n_draws = 50L, prior = FALSE,
+                           custom_stats = NULL) {
 
   n_available <- nrow(y_rep_mat)
   idx_draws   <- if (n_available <= n_draws) seq_len(n_available) else
@@ -630,6 +636,8 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
     min    = min,
     max    = max
   )
+  # user statistics (named functions of the data vector); a default name is replaced
+  if (length(custom_stats)) stats[names(custom_stats)] <- custom_stats
 
   T_obs <- vapply(stats, function(f) f(y_obs), numeric(1))
 
@@ -661,7 +669,7 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
     )
 
   stat_plots <- lapply(names(stats), function(s) {
-    bayesplot::ppc_stat(y_obs, y_rep_mat, stat = s) +
+    bayesplot::ppc_stat(y_obs, y_rep_mat, stat = stats[[s]]) +
       ggplot2::labs(title = sprintf("T = %s %s", s, title_base))
   })
   names(stat_plots) <- names(stats)
@@ -677,10 +685,12 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 
   # ---- interpretation -----------------------------------------------------
   interpretation <- list(
-    bayes_pvalues = mapply(.interpret_bayes_pvalue,
-                           p         = bayes_pvalues,
-                           stat_name = names(bayes_pvalues),
-                           SIMPLIFY  = FALSE),
+    # prior checks: numbers only (a prior unlike the data is often expected)
+    bayes_pvalues = if (prior) lapply(bayes_pvalues, function(p) sprintf("p_B = %.3f", p))
+                    else mapply(.interpret_bayes_pvalue,
+                                p         = bayes_pvalues,
+                                stat_name = names(bayes_pvalues),
+                                SIMPLIFY  = FALSE),
     coverage      = mapply(.interpret_coverage,
                            empirical = coverage,
                            nominal   = c(0.50, 0.90),
@@ -807,6 +817,11 @@ gq.stanmodel <- function (x, new_data, n_draws = NULL, output_dir = NULL, cache_
 #'
 #' @param x a fitted `stanmodel` object
 #' @param n_draws number of y_rep draws for the density overlay (default 50)
+#' @param stats optional named list of extra test statistics, each a function of
+#'   the data vector returning one number, e.g.
+#'   `list(prop_zero = function(y) mean(y == 0))`. Added to the six defaults
+#'   (mean, sd, median, mad, min, max); a default name is replaced. Choose
+#'   statistics that target what the model might miss (Gelman et al. 2020).
 #' @param data optional dataframe to use for filtering; if NULL, uses `x$data`
 #' @param filter_expr an optional dplyr-style expression to filter rows of `data`
 #' @param filter_fn an optional function of the form `function(y_obs, y_rep)` that returns a list with filtered `y_obs` and `y_rep`. If both `filter_expr` and `filter_fn` are provided, `filter_expr` takes precedence.
@@ -843,6 +858,7 @@ ppc <- function(x, ...) UseMethod("ppc")
 #' @exportS3Method
 ppc.stanmodel <- function(x,
                            n_draws     = 50L,
+                           stats       = NULL,
                            data        = NULL,
                            filter_expr = NULL,
                            filter_fn   = NULL,
@@ -982,7 +998,8 @@ ppc.stanmodel <- function(x,
     # No grouping -> single PPC
     # =========================================================================
     if (is.null(.by)) {
-      return(.run_single_ppc(y_obs, y_rep_mat, obs_var, n_draws, prior = is_prior))
+      return(.run_single_ppc(y_obs, y_rep_mat, obs_var, n_draws, prior = is_prior,
+                             custom_stats = stats))
     }
 
     # =========================================================================
@@ -1043,7 +1060,7 @@ ppc.stanmodel <- function(x,
         lbl     <- paste(paste(.by, unlist(grp_row), sep = "="), collapse = " | ")
         .run_single_ppc(y_obs_g, y_rep_g,
                         sprintf("%s [%s]", obs_var, lbl),
-                        n_draws, prior = is_prior)
+                        n_draws, prior = is_prior, custom_stats = stats)
       }
     )
 
@@ -1392,7 +1409,11 @@ display.ppc_results_grouped <- function(x, ...) {
 #' @param params optional character vector of parameter names to check; if NULL, checks all
 #' @param plot logical; if TRUE, renders traceplots for specified parameters (default FALSE)
 #' @param ... additional arguments passed to methods
-#' @return a data frame summarizing convergence diagnostics for each parameter
+#' @return a `stanworkflow_diagnostics` object (printed with all checks):
+#'   `summary` (mean, sd, R-hat, bulk/tail ESS per parameter), `divergent`,
+#'   `max_treedepth`, `ebfmi` (per chain), the flagged parameters, `thresholds`
+#'   (R-hat 1.01; ESS 100 per chain; E-BFMI 0.3), `problems` and `ok`. Failed
+#'   checks also give a warning, repeated when inference is run on the fit.
 #' @importFrom posterior summarise_draws subset_draws
 #' @importFrom bayesplot mcmc_trace
 #' @importFrom dplyr filter
@@ -1404,85 +1425,60 @@ diagnose <- function(x, ...) UseMethod("diagnose")
 #' @rdname diagnose
 #' @exportS3Method
 diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
-  if (!inherits(x, "stanmodel")) {
-    stop("`x` must be a stanmodel object.")
-  }
-
+  if (!inherits(x, "stanmodel")) stop("`x` must be a stanmodel object.")
   if (is.null(x$draws)) stop("Model has not been fitted yet. Run `fit()` first.")
 
   # stored sampler diagnostics; models saved before they existed fall back to cmdstanr
   diag <- if (!is.null(x$sampler_diagnostics))
     .diagnostic_summary(x$sampler_diagnostics, x$sampler_params$max_treedepth %||% 10L)
   else x$fitted_model$diagnostic_summary()
-    div   <- diag$num_divergent
-    td    <- diag$num_max_treedepth
-    ebfmi <- diag$ebfmi
 
-  
-  cat("\n====================\n Convergence Summary\n====================\n")
-  
-  # default to scalar parameters only for plots -- exclude y_rep and log_lik
-  plot_params <- if (!is.null(params)) params else {
+  # default: the model's parameters and transformed parameters (generated
+  # quantities are functions of them); older objects: all but y_rep / log_lik
+  plot_params <- params %||% .model_parameters(x) %||%
     x$variables[!grepl("^y_rep|^log_lik", x$variables)]
-  }
-
-  # Check if specified params exist in draws
   missing_params <- setdiff(plot_params, x$variables)
   if (length(missing_params) > 0) {
-    warning(sprintf(
-      "The following parameters were not found in the draws and will be ignored: %s",
-      paste(missing_params, collapse = ", ")
-    ))
+    warning(sprintf("The following parameters were not found in the draws and will be ignored: %s",
+                    paste(missing_params, collapse = ", ")))
     plot_params <- setdiff(plot_params, missing_params)
   }
+  draws <- posterior::subset_draws(x$draws, variable = plot_params)
+  summ  <- posterior::summarise_draws(draws) |>
+    dplyr::select(variable, mean, sd, rhat, ess_bulk, ess_tail)
 
-  # Extract draws
-  draws <- x$draws |> posterior::subset_draws(variable = plot_params) # filter to specified params if provided
-  
-  # Posterior package summary
-  summ <- posterior::summarise_draws(draws)
-  summ |> dplyr::select(variable, mean, sd, rhat, ess_bulk, ess_tail) |> print()
-  
-  # Rhat check
-  cat("\n--- R-hat diagnostics ---\n")
-  bad_rhat <- summ$variable[summ$rhat > 1.01]
-  if (length(bad_rhat) == 0) {
-    cat("All R-hat < 1.01 (good)\n")
-  } else {
-    cat("Parameters with R-hat > 1.01:\n")
-    print(bad_rhat)
-  }
-  
-  # ESS check
-  cat("\n--- Effective Sample Size (ESS) ---\n")
-  low_ess <- summ$variable[summ$ess_bulk < 400]
-  if (length(low_ess) == 0) {
-    cat("All ESS_bulk > 400 (good)\n")
-  } else {
-    cat("Parameters with ESS_bulk < 400:\n")
-    print(low_ess)
-  }
-  
-  # Divergences
-  cat("\n--- Divergences ---\n")
-  cat(sprintf("Total divergent transitions: %d\n", sum(div)))
-  if (sum(div) > 0) {
-    cat("Per chain:\n")
-    for (i in seq_along(div)) cat(sprintf("  chain %d: %d\n", i, div[i]))
-    cat("Action: increase `adapt_delta` toward 0.99 or reparameterise (non-centred)\n")
-  }
-  
-  # Treedepth
-  cat("\n--- Max treedepth ---\n")
-  cat("Transitions hitting max treedepth:", td, "\n")
-  
-  # Energy Bayesian fraction of missing information (E-BFMI)
-  cat("\n--- Energy diagnostics (E-BFMI) ---\n")
-  print(ebfmi)
-  if (any(ebfmi < 0.3)) {
-    cat("Warning: E-BFMI < 0.3 indicates poor exploration\n")
-  }
-  
+  # thresholds (Vehtari et al. 2021): R-hat < 1.01; bulk and tail ESS > 100 per chain
+  n_chains <- posterior::nchains(x$draws)
+  th <- list(rhat = 1.01, ess = 100 * n_chains, ebfmi = 0.3)
+  flag <- function(v, bad) v[!is.na(bad) & bad]
+  out <- structure(list(
+    summary       = summ,
+    bad_rhat      = flag(summ$variable, summ$rhat > th$rhat),
+    low_ess_bulk  = flag(summ$variable, summ$ess_bulk < th$ess),
+    low_ess_tail  = flag(summ$variable, summ$ess_tail < th$ess),
+    divergent     = diag$num_divergent,
+    max_treedepth = diag$num_max_treedepth,
+    ebfmi         = diag$ebfmi,
+    nchains       = n_chains,
+    thresholds    = th
+  ), class = "stanworkflow_diagnostics")
+  out$problems <- c(
+    if (length(out$bad_rhat))     sprintf("R-hat > %.2f: %s", th$rhat, .some(out$bad_rhat)),
+    if (length(out$low_ess_bulk)) sprintf("bulk ESS < %d: %s", th$ess, .some(out$low_ess_bulk)),
+    if (length(out$low_ess_tail)) sprintf("tail ESS < %d: %s", th$ess, .some(out$low_ess_tail)),
+    if (sum(out$divergent) > 0)   sprintf("%d divergent transitions", sum(out$divergent)),
+    if (sum(out$max_treedepth) > 0) sprintf("%d transitions hit max treedepth", sum(out$max_treedepth)),
+    if (any(out$ebfmi < th$ebfmi)) sprintf("E-BFMI < %.1f in chain(s) %s", th$ebfmi,
+                                           paste(which(out$ebfmi < th$ebfmi), collapse = ", "))
+  )
+  out$ok <- length(out$problems) == 0L
+  if (!out$ok)
+    warning(structure(class = c("stanworkflow_convergence_warning", "warning", "condition"),
+      list(message = paste0("Convergence diagnostics failed -- do not interpret this fit yet:
+  ",
+                            paste(out$problems, collapse = "
+  ")), call = NULL)))
+
   # Optional traceplots + trankplots
   if (plot) {
     cat("\n--- Traceplots ---\n")
@@ -1516,7 +1512,78 @@ diagnose.stanmodel <- function(x, params = NULL, plot = FALSE, ...) {
     print(g_trank_hist)
   }
   
-  invisible(summ)
+  out
+}
+
+# first names of a long list, e.g. "a, b, c, d, e ... and 12 more"
+.some <- function(v, n = 5L)
+  if (length(v) <= n) paste(v, collapse = ", ") else
+    sprintf("%s ... and %d more", paste(v[seq_len(n)], collapse = ", "), length(v) - n)
+
+# names of the model's parameters and transformed parameters (stanc), or NULL
+.model_parameters <- function(x) {
+  v <- tryCatch(x$compiled_model$variables(), error = function(e) NULL)
+  nm <- c(names(v$parameters), names(v$transformed_parameters))
+  nm <- intersect(nm, x$variables)
+  if (length(nm)) nm else NULL
+}
+
+#' @exportS3Method
+print.stanworkflow_diagnostics <- function(x, ...) {
+  th <- x$thresholds
+  cat("
+====================
+ Convergence Summary
+====================
+")
+  print(x$summary)
+  cat("
+--- R-hat diagnostics ---
+")
+  if (!length(x$bad_rhat)) cat(sprintf("All R-hat < %.2f (good)
+", th$rhat))
+  else cat(sprintf("Parameters with R-hat > %.2f: %s
+", th$rhat, paste(x$bad_rhat, collapse = ", ")))
+  cat(sprintf("
+--- Effective Sample Size (ESS; threshold %d = 100 per chain) ---
+", th$ess))
+  if (!length(x$low_ess_bulk) && !length(x$low_ess_tail)) cat("All bulk and tail ESS above threshold (good)
+")
+  if (length(x$low_ess_bulk)) cat("Low bulk ESS:", paste(x$low_ess_bulk, collapse = ", "), "
+")
+  if (length(x$low_ess_tail)) cat("Low tail ESS:", paste(x$low_ess_tail, collapse = ", "), "
+")
+  cat("
+--- Divergences ---
+")
+  cat(sprintf("Total divergent transitions: %d
+", sum(x$divergent)))
+  if (sum(x$divergent) > 0) {
+    cat("Per chain:", x$divergent, "
+")
+    cat("Action: increase `adapt_delta` toward 0.99 or reparameterise (non-centred)
+")
+  }
+  cat("
+--- Max treedepth ---
+")
+  cat("Transitions hitting max treedepth:", x$max_treedepth, "
+")
+  cat("
+--- Energy diagnostics (E-BFMI) ---
+")
+  print(x$ebfmi)
+  if (any(x$ebfmi < th$ebfmi)) cat(sprintf("Warning: E-BFMI < %.1f indicates poor exploration
+", th$ebfmi))
+  cat(if (x$ok) "
+All checks passed.
+" else "
+CHECKS FAILED:
+  ",
+      if (!x$ok) paste(x$problems, collapse = "
+  "), if (!x$ok) "
+", sep = "")
+  invisible(x)
 }
 
 # --- posterior parameters

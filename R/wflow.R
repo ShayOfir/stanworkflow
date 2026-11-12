@@ -364,7 +364,58 @@ run_diagnostics.wflow <- function(wf, params = NULL, plot = FALSE, ...) {
   
   params_use <- params %||% wf$diagnostics_params
   wf$diagnostics <- wf$post_fit |> diagnose(params = params_use, plot = plot)
+  print(wf$diagnostics)
   wf
+}
+
+# ---- read-only checks on a wflow --------------------------------------------
+
+#' Predictive check and diagnostics of a wflow's fits (read-only)
+#'
+#' Compute a prior or posterior predictive check, or convergence diagnostics,
+#' from the fits stored in a `wflow` (or a `regimen`) and return the result.
+#' The object itself is not changed, so you can try other test statistics or
+#' groupings without touching the stored results.
+#' @param x a `wflow` or `regimen`
+#' @param type `"posterior"` (default) or `"prior"`
+#' @param ... passed to [ppc.stanmodel()] (e.g. `.by`, `stats`) or
+#'   [diagnose.stanmodel()] (e.g. `params`, `plot`)
+#' @return the `ppc()` / `diagnose()` result
+#' @name wflow_checks
+NULL
+
+#' @rdname wflow_checks
+#' @exportS3Method
+ppc.wflow <- function(x, type = c("posterior", "prior"), ...) {
+  ppc(.wflow_fit(x, match.arg(type)), ...)
+}
+
+#' @rdname wflow_checks
+#' @param params parameters to check; default the wflow's `diagnostics_params`
+#' @exportS3Method
+diagnose.wflow <- function(x, params = NULL, ...) {
+  diagnose(.wflow_fit(x, "posterior"), params = params %||% x$diagnostics_params, ...)
+}
+
+#' @keywords internal
+.wflow_fit <- function(wf, type) {
+  fit <- if (type == "prior") wf$prior_fit else wf$post_fit
+  if (is.null(fit))
+    stop(sprintf("No %s fit in this wflow: run %s first.", type,
+                 if (type == "prior") "`tune()`" else "`fit_posterior()`"), call. = FALSE)
+  fit
+}
+
+# inference from a fit that failed its convergence checks: repeat the warning
+#' @keywords internal
+.warn_failed_diagnostics <- function(wf) {
+  d <- wf$diagnostics
+  if (inherits(d, "stanworkflow_diagnostics") && !isTRUE(d$ok))
+    warning(structure(class = c("stanworkflow_convergence_warning", "warning", "condition"),
+      list(message = paste0("Inference from a fit that failed its convergence diagnostics (",
+                            paste(d$problems, collapse = "; "), "). Interpret with caution."),
+           call = NULL)))
+  invisible(wf)
 }
 
 # ---- run_inference ------------------------------------------------------------------
@@ -399,6 +450,7 @@ run_inference.wflow <- function(wf,
                                  ...) {
 
   .check_post_fit(wf)
+  .warn_failed_diagnostics(wf)
   data_use <- data %||% wf$data$data
   extra_use <- extra %||% wf$data$extra
   wf$inference[[name]] <- infer_contrasts(

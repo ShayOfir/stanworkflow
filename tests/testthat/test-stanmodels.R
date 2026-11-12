@@ -21,10 +21,10 @@ make_minimal_df <- function(n = 10) {
   )
 }
 
-make_mock_draws <- function(n = 10) {
+make_mock_draws <- function(n = 10, chains = 4L) {
   arr <- array(
-    rnorm(n * 4 * 3),
-    dim      = c(n, 4, 3),
+    rnorm(n * chains * 3),
+    dim      = c(n, chains, 3),
     dimnames = list(NULL, NULL, c("mu", "sigma", "y_rep[1]"))
   )
   class(arr) <- c("draws_array", "draws", "array")
@@ -32,12 +32,13 @@ make_mock_draws <- function(n = 10) {
 }
 
 make_compiled_mock <- function(n = 10) {
-  fitted_mock <- list(draws = function(...) make_mock_draws(n),
+  # like CmdStan, returns as many chains as requested
+  fitted_mock <- function(chains = 4L) list(draws = function(...) make_mock_draws(n, chains),
                       sampler_diagnostics = function(...) NULL,
-                      return_codes = function() 0L,
-                      num_chains = function() 4L,
-                      output_files = function(...) character(4))
-  list(sample    = function(...) fitted_mock,
+                      return_codes = function() rep(0L, chains),
+                      num_chains = function() chains,
+                      output_files = function(...) character(chains))
+  list(sample    = function(..., chains = 4L) fitted_mock(chains),
        variables = function() list(data = list(N = NULL, n_group = NULL,
                                                group_id = NULL, y = NULL)))
 }
@@ -486,6 +487,33 @@ test_that("gq() works on a reloaded model: no executable, no CmdStan CSVs, only 
   expect_equal(posterior::as_draws_matrix(out)[, v], posterior::as_draws_matrix(ref)[, v])
 })
 
+test_that("fit() stops when fewer chains come back than were requested", {
+  m <- make_compiled_stanmodel()
+  m$compiled_model$sample <- function(...) list(draws = function(...) make_mock_draws(10, 3L),
+                                                sampler_diagnostics = function(...) NULL,
+                                                return_codes = function() rep(0L, 4L),
+                                                num_chains = function() 4L,
+                                                output_files = function(...) character(4))
+  sd <- list(N = 10L, n_group = 2L, group_id = rep(1:2, 5), y = rnorm(10))
+  expect_error(fit(m, data = make_minimal_df(), stan_data = sd), "Expected 4 chains but got 3")
+})
+
+test_that("diagnose() returns all checks; thresholds scale with chains; failures warn", {
+  skip_if_no_cmdstan()
+  m <- tm_fit()
+  d <- quiet(diagnose(m, params = c("a", "sigma")))
+  expect_s3_class(d, "stanworkflow_diagnostics")
+  expect_true(all(c("summary", "divergent", "max_treedepth", "ebfmi", "problems", "ok") %in% names(d)))
+  expect_equal(d$thresholds$ess, 100 * posterior::nchains(m$draws))
+  expect_true(all(c("ess_bulk", "ess_tail") %in% names(d$summary)))
+  expect_output(print(d), "Divergences")
+  expect_true(all(stanworkflow:::.model_parameters(m) %in% c("a", "b", "g", "sigma")))   # default: parameters only
+  bad <- m; bad$sampler_diagnostics[, , "divergent__"] <- 1        # every transition divergent
+  expect_warning(db <- diagnose(bad, params = "sigma"), "divergent transitions",
+                 class = "stanworkflow_convergence_warning")
+  expect_false(db$ok)
+})
+
 test_that("one copy of the draws: cmdstanr's internal copy is dropped after fit()", {
   skip_if_no_cmdstan()
   m <- fit(tm_compiled(), data = tm_data(), sampler_params = fast2)   # fresh fit (tm_fit() is shared)
@@ -509,7 +537,7 @@ test_that("a reloaded model (no CmdStan files) works downstream from x$draws alo
   skip_if_no_cmdstan()
   m <- tm_fit()
   r <- m; r$fitted_model <- NULL                       # as after loading in a new session
-  expect_output(diagnose(r, params = "sigma"), "Divergences")
+  expect_output(print(quiet(diagnose(r, params = "sigma"))), "Divergences")
   expect_s3_class(suppressMessages(ppc(r)), "ppc_results")
   expect_equal(suppressWarnings(loo_cv(r))$loo$estimates,      # high Pareto k on the tiny model
                suppressWarnings(loo_cv(m))$loo$estimates)

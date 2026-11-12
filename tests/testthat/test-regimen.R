@@ -107,7 +107,7 @@ test_that("full lifecycle: prepare -> tune -> fit -> infer, checkpoints, results
   expect_s3_class(po$posterior_ppc_results[[1]], "ppc_results_grouped")
   expect_true(po$tuned)                                       # accepted priors carried into the posterior file
   expect_true(prior_log(po)$accepted[1])
-  expect_true(all(c("variable", "rhat") %in% names(po$diagnostics)))
+  expect_true(all(c("variable", "rhat") %in% names(po$diagnostics$summary)))
 
   # resume() on a fresh regimen object finds every checkpoint and refits nothing
   t_post <- file.mtime(reg$paths$posterior)
@@ -180,4 +180,23 @@ test_that("regimen: fit after tune without accept_priors() warns but runs", {
   expect_warning(quiet(reg <- run(reg, steps = "fit")), not_tuned)
   expect_true(reg$status$fitted)
   expect_error(accept_priors(tm_regimen()), "run `tune")
+})
+
+test_that("ppc()/diagnose() on a regimen: read-only, from memory or from the checkpoint files", {
+  skip_if_no_cmdstan()
+  tm_compiled()
+  reg <- tm_regimen(ppc_by = "group")
+  quiet(reg <- run(reg, steps = c("prepare", "tune")))
+  reg <- accept_priors(reg)
+  quiet(reg <- run(reg, steps = "fit"))
+  before <- reg
+  expect_s3_class(ppc(reg), "ppc_results_grouped")                 # regimen's ppc_by is the default
+  expect_s3_class(ppc(reg, type = "prior", .by = "direction"), "ppc_results_grouped")
+  expect_output(print(quiet(diagnose(reg, params = "sigma"))), "Divergences")
+  expect_identical(reg, before)
+
+  cold <- reg; cold$wf <- NULL                                      # nothing in memory: read the files
+  expect_s3_class(ppc(cold, type = "prior"), "ppc_results_grouped")
+  expect_output(print(quiet(diagnose(cold, params = "sigma"))), "Divergences")
+  expect_null(cold$wf)
 })

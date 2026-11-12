@@ -4,7 +4,14 @@
 \alias{.run_single_ppc}
 \title{Run a single PPC for one (y_obs, y_rep_mat) pair}
 \usage{
-.run_single_ppc(y_obs, y_rep_mat, obs_var, n_draws = 50L, prior = FALSE)
+.run_single_ppc(
+  y_obs,
+  y_rep_mat,
+  obs_var,
+  n_draws = 50L,
+  prior = FALSE,
+  custom_stats = NULL
+)
 }
 \arguments{
 \item{y_obs}{numeric vector of observed values}

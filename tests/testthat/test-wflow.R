@@ -53,8 +53,8 @@ test_that("fit_posterior() warns when untuned and not once tuned", {
 test_that("run_diagnostics() stores diagnostics on a fitted wflow", {
   skip_if_no_cmdstan()
   wf <- quiet(run_diagnostics(fitted_wf()))
-  expect_s3_class(wf$diagnostics, "tbl_df")
-  expect_true("rhat" %in% names(wf$diagnostics))
+  expect_s3_class(wf$diagnostics, "stanworkflow_diagnostics")
+  expect_true("rhat" %in% names(wf$diagnostics$summary))
 })
 
 test_that("tune() fits the prior, runs ppc, and saves a loadable wflow", {
@@ -127,7 +127,7 @@ test_that("ppc() on a fitted model returns ppc_results / grouped results and plo
 
 test_that("diagnose() returns the draws summary", {
   skip_if_no_cmdstan()
-  s <- quiet(diagnose(tm_fit()))
+  s <- quiet(diagnose(tm_fit()))$summary
   expect_s3_class(s, "tbl_df")
   expect_true(all(c("variable", "rhat", "ess_bulk") %in% names(s)))
   expect_false(any(grepl("^(y_rep|log_lik)", s$variable)))
@@ -214,4 +214,42 @@ test_that("prior check reports coverage neutrally; accept_priors() and set_as_tu
   expect_false(any(grepl("likelihood|calibrated", txt)))
   expect_true(accept_priors(wf)$tuned)
   expect_identical(set_as_tuned(wf), accept_priors(wf))
+})
+
+test_that("ppc(stats =) adds custom statistics; prior checks show p-values without labels", {
+  skip_if_no_cmdstan()
+  wf  <- fitted_wf()
+  top <- function(y) mean(y > 2)
+  p <- ppc(wf, stats = list(prop_gt2 = top))                 # read-only method on a wflow
+  expect_true("prop_gt2" %in% names(p$bayes_pvalues))
+  expect_s3_class(p$plots$prop_gt2, "ggplot")
+  expect_match(p$interpretation$bayes_pvalues$prop_gt2, "[", fixed = TRUE)   # posterior: labelled
+  g <- ppc(wf, .by = "group", stats = list(prop_gt2 = top))
+  expect_true("p_B_prop_gt2" %in% names(g$summary))
+
+  sp <- sampler_params(modifyList(sampler_params(), tm_sampler))
+  wp <- quiet(tune(new_wf() |> attach_data(tm_data()), sampler_params = sp))
+  txt <- unlist(wp$prior_ppc_results$y$interpretation$bayes_pvalues)
+  expect_true(all(grepl("^p_B = [0-9.]+$", txt)))                 # prior: numbers only
+})
+
+test_that("ppc()/diagnose() on a wflow are read-only", {
+  skip_if_no_cmdstan()
+  wf <- fitted_wf()
+  before <- wf
+  d <- quiet(diagnose(wf, params = "sigma"))
+  expect_output(print(d), "Divergences")
+  expect_s3_class(ppc(wf, .by = "group"), "ppc_results_grouped")
+  expect_identical(wf, before)
+  expect_error(ppc(new_wf(), type = "prior"), "run `tune")
+})
+
+test_that("inference on a fit that failed diagnostics repeats the warning (does not stop)", {
+  skip_if_no_cmdstan()
+  wf <- quiet(run_diagnostics(fitted_wf()))
+  wf$diagnostics$ok <- FALSE; wf$diagnostics$problems <- "12 divergent transitions"
+  co <- contrast("x", continuous = TRUE, parameter = "b", factors = "direction", delta = "range")
+  expect_warning(capture.output(suppressMessages(wf <- run_inference(wf, co, draws_method = "parameter"))),
+                 "12 divergent", class = "stanworkflow_convergence_warning")
+  expect_s3_class(wf$inference$main, "inference")
 })
