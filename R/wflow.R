@@ -20,12 +20,20 @@
 #' @param prior_sampler_params_list named list of overrides for `sampler_params()`.
 #' @param post_sampler_params_list named list of overrides for `sampler_params()`.
 #'   NULL uses package defaults.
+#' @param diagnostics_params optional character vector of the variables
+#'   `run_diagnostics()` checks (e.g. `c("beta_0", "beta_1", "sigma")`).
+#'   If NULL, read from `diagnostics_params.csv` (or `.txt`) in the model
+#'   folder: one name per line or comma-separated; a header line such as
+#'   `parameters`, quotes, blank lines and `#` comments are ignored. Names the
+#'   model does not define give a warning and are ignored. If neither is given,
+#'   the model's parameters and transformed parameters are checked.
 #' @return an object of class `wflow`
 #' @export
 wflow <- function(model_name,
                   models_folder      = "./models/",
                   prior_sampler_params_list = NULL,
-                  post_sampler_params_list = NULL) {
+                  post_sampler_params_list = NULL,
+                  diagnostics_params = NULL) {
 
   stopifnot(is.character(model_name), length(model_name) == 1L)
 
@@ -52,11 +60,11 @@ wflow <- function(model_name,
   }
 
   # ---- load diagnostics params ---------------------------------------------
-  diag_file <- file.path(model_dir, "diagnostics_params.csv")
-  diagnostics_params <- if (file.exists(diag_file)) {
-    read.csv(diag_file) |> dplyr::pull(parameters)
-  } else {
-    NULL
+  # the argument wins; otherwise diagnostics_params.csv / .txt in the model folder
+  if (is.null(diagnostics_params)) {
+    diag_file <- file.path(model_dir, c("diagnostics_params.csv", "diagnostics_params.txt"))
+    diag_file <- diag_file[file.exists(diag_file)][1]
+    if (!is.na(diag_file)) diagnostics_params <- .read_name_list(diag_file)
   }
 
   # ---- compile -------------------------------------------------------------
@@ -69,13 +77,12 @@ wflow <- function(model_name,
     warning(sprintf("priors.csv in '%s' has value(s) the model does not declare (ignored): %s",
                     model_dir, paste(unknown, collapse = ", ")), call. = FALSE)
   compiled$priors <- modifyList(compiled$priors, priors_list[setdiff(names(priors_list), unknown)])
+  diagnostics_params <- .check_diagnostics_params(diagnostics_params, compiled, model_dir)
 
   # ---- sampler params ------------------------------------------------------
-  prior_sp <- if (!is.null(prior_sampler_params_list)) {
-    modifyList(sampler_params(), prior_sampler_params_list)
-  } else {
-    sampler_params()
-  }
+  # a prior predictive check needs fewer draws: 500 + 500 (as in regimen())
+  prior_base <- modifyList(sampler_params(), list(iter_warmup = 500L, iter_sampling = 500L))
+  prior_sp <- sampler_params(modifyList(prior_base, as.list(prior_sampler_params_list %||% list())))
 
   post_sp <- if (!is.null(post_sampler_params_list)) {
     modifyList(sampler_params(), post_sampler_params_list)
@@ -101,6 +108,36 @@ wflow <- function(model_name,
     ),
     class = "wflow"
   )
+}
+
+# names from a forgiving text/CSV file: one per line or comma/semicolon
+# separated; quotes, blank lines, "#" comments and a header word are ignored
+#' @keywords internal
+.read_name_list <- function(file) {
+  x <- readLines(file, warn = FALSE, encoding = "UTF-8")
+  x <- sub("^\ufeff", "", x)                    # byte-order mark
+  x <- sub("#.*$", "", x)                              # comments
+  x <- unlist(strsplit(x, "[,;\t]"))
+  x <- trimws(gsub("[\"']", "", x))
+  x <- x[nzchar(x)]
+  header <- c("parameter", "parameters", "param", "params", "variable", "variables", "name", "names")
+  if (length(x) && tolower(x[1]) %in% header) x <- x[-1]
+  unique(x)
+}
+
+# keep diagnostics names the model defines (any block; "beta[2]" -> "beta"); warn about the rest
+#' @keywords internal
+.check_diagnostics_params <- function(params, compiled, model_dir) {
+  if (is.null(params)) return(NULL)
+  v <- tryCatch(compiled$compiled_model$variables(), error = function(e) NULL)
+  known <- unlist(lapply(v[c("parameters", "transformed_parameters", "generated_quantities")], names))
+  if (is.null(known)) return(params)
+  bad <- params[!sub("\\[.*$", "", params) %in% known]
+  if (length(bad))
+    warning(sprintf("diagnostics_params for '%s': not defined by the model (ignored): %s",
+                    basename(model_dir), paste(bad, collapse = ", ")), call. = FALSE)
+  keep <- setdiff(params, bad)
+  if (length(keep)) keep else NULL
 }
 
 # ---- print ------------------------------------------------------------------

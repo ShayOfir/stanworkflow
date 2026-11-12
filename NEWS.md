@@ -44,6 +44,17 @@
   when a check fails; the warning is repeated when inference is run.
   `wf$diagnostics` now holds this object (its `$summary` is the former table).
 * `fit()` stops when fewer chains come back than were requested.
+* Provenance: every fit records `x$provenance` (the seed CmdStan used and
+  whether it was given or automatic, chains/iterations, CmdStan / cmdstanr /
+  stanworkflow / R versions, time, Stan-code hash), shown by `print()`. A fit
+  without a seed gets one from the clock (R's RNG stream is not consumed);
+  refitting with `seed = x$provenance$seed` reproduces the draws.
+* `wflow()`: prior predictive checks default to 500 + 500 draws (as in
+  `regimen()`).
+* `diagnostics_params`: new `wflow()` argument; the model-folder file
+  (`diagnostics_params.csv` or `.txt`) is read leniently (one name per line or
+  comma-separated, optional header, comments); names the model does not
+  define give a warning and are ignored.
 * `priors.csv`: a vector prior is written in one cell, values separated by
   `;`. Names the model does not declare give a warning and are ignored
   (e.g. leftovers after switching a prior family).

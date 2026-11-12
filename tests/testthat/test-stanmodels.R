@@ -87,7 +87,7 @@ test_that("stanmodel creates correct structure", {
 test_that("stanmodel() declares every field and validate_stanmodel() checks types", {
   m <- stanmodel()
   expect_named(m, c("compiled_model", "model_code", "priors", "sampler_params", "fitted_model",
-                    "draws", "sampler_diagnostics", "variables", "data", "stan_data", "extra", "cond_df", "outcome_var"))
+                    "draws", "sampler_diagnostics", "provenance", "variables", "data", "stan_data", "extra", "cond_df", "outcome_var"))
   expect_identical(validate_stanmodel(m), m)
   bad <- m; bad$priors <- list(prior_a = 1); bad$data <- "not a df"
   expect_error(validate_stanmodel(bad), "priors, data")
@@ -573,4 +573,23 @@ test_that(".complete_fit() rebuilds a fit whose chain cmdstanr wrongly marked fa
   lossy_gone$output_files <- function(include_failed = FALSE)
     if (include_failed) c(all_files[1], "nope.csv") else all_files[1]
   expect_error(stanworkflow:::.complete_fit(lossy_gone), "missing")
+})
+
+test_that("provenance: every fit has a recorded seed; refitting with it reproduces the draws", {
+  skip_if_no_cmdstan()
+  m  <- tm_compiled(); df <- tm_data()
+  set.seed(42); r_before <- runif(3); set.seed(42)
+  f1 <- fit(m, data = df, sampler_params = fast2)                     # no seed given
+  expect_equal(runif(3), r_before)                                     # user's RNG stream untouched
+  pv <- f1$provenance
+  expect_equal(pv$seed_source, "auto")
+  expect_true(is.numeric(pv$seed) && !is.na(pv$seed))
+  expect_true(all(c("cmdstan", "cmdstanr", "stanworkflow", "R", "time", "code_hash") %in% names(pv)))
+  expect_equal(pv$code_hash, rlang::hash(m$model_code))
+
+  f2 <- fit(m, data = df, sampler_params = modifyList(fast2, list(seed = pv$seed)))
+  expect_equal(f2$provenance$seed_source, "user")
+  expect_equal(f2$provenance$seed, pv$seed)
+  expect_identical(posterior::as_draws_array(f2$draws), posterior::as_draws_array(f1$draws))
+  expect_output(print(f2), "provenance: seed")
 })

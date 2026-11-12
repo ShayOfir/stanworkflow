@@ -19,6 +19,10 @@ All fields are declared here; they are filled step by step:
 folder and are gone after the R session ends; its internal copy of the draws
 is removed after fitting), \code{draws} (posterior \code{draws}, the single persistent
 copy), \code{sampler_diagnostics} (\code{draws} of divergent__, treedepth__, energy__),
+\code{provenance} (seed CmdStan used and whether it was set by the user or
+automatically, chains/iterations, CmdStan/cmdstanr/stanworkflow/R
+versions, time, hash of the Stan code; refit with
+\code{sampler_params(list(seed = x$provenance$seed))}),
 \code{variables} (character), \code{data} (data frame), \code{stan_data}
 (list passed to Stan), \code{extra} (list), \code{cond_df} (data frame or NULL),
 \code{outcome_var} (character)}

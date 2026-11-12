@@ -8,7 +8,8 @@ wflow(
   model_name,
   models_folder = "./models/",
   prior_sampler_params_list = NULL,
-  post_sampler_params_list = NULL
+  post_sampler_params_list = NULL,
+  diagnostics_params = NULL
 )
 }
 \arguments{
@@ -27,6 +28,14 @@ does not declare give a warning and are ignored.}
 
 \item{post_sampler_params_list}{named list of overrides for \code{sampler_params()}.
 NULL uses package defaults.}
+
+\item{diagnostics_params}{optional character vector of the variables
+\code{run_diagnostics()} checks (e.g. \code{c("beta_0", "beta_1", "sigma")}).
+If NULL, read from \code{diagnostics_params.csv} (or \code{.txt}) in the model
+folder: one name per line or comma-separated; a header line such as
+\code{parameters}, quotes, blank lines and \verb{#} comments are ignored. Names the
+model does not define give a warning and are ignored. If neither is given,
+the model's parameters and transformed parameters are checked.}
 }
 \value{
 an object of class \code{wflow}

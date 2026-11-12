@@ -123,6 +123,10 @@ print.sampler_params <- function(x, ...) {
 #'     folder and are gone after the R session ends; its internal copy of the draws
 #'     is removed after fitting), `draws` (posterior `draws`, the single persistent
 #'     copy), `sampler_diagnostics` (`draws` of divergent__, treedepth__, energy__),
+#'     `provenance` (seed CmdStan used and whether it was set by the user or
+#'     automatically, chains/iterations, CmdStan/cmdstanr/stanworkflow/R
+#'     versions, time, hash of the Stan code; refit with
+#'     `sampler_params(list(seed = x$provenance$seed))`),
 #'     `variables` (character), `data` (data frame), `stan_data`
 #'     (list passed to Stan), `extra` (list), `cond_df` (data frame or NULL),
 #'     `outcome_var` (character)}
@@ -142,6 +146,7 @@ stanmodel <- function() {
       fitted_model   = NULL,
       draws          = NULL,
       sampler_diagnostics = NULL,
+      provenance     = NULL,
       variables      = NULL,
       data           = NULL,
       stan_data      = NULL,
@@ -170,6 +175,7 @@ validate_stanmodel <- function(x) {
     sampler_params = ok(x$sampler_params, function(v) inherits(v, "sampler_params")),
     draws          = ok(x$draws, function(v) inherits(v, "draws")),
     sampler_diagnostics = ok(x$sampler_diagnostics, function(v) inherits(v, "draws")),
+    provenance     = ok(x$provenance, is.list),
     variables      = ok(x$variables, is.character),
     data           = ok(x$data, is.data.frame),
     stan_data      = ok(x$stan_data, is.list),
@@ -399,6 +405,12 @@ fit.stanmodel <- function(x,
   # the same minute share file names and one loses chains. tempfile() ignores the seed.
   dots <- list(...)
   if (is.null(dots$output_basename)) dots$output_basename <- basename(tempfile("swf"))
+  # every fit gets a seed so it can be reproduced from its provenance; a seed in
+  # sampler_params or `...` wins. The automatic seed comes from the clock, not
+  # from R's RNG, so the user's set.seed() stream is not consumed.
+  seed_source <- if (!is.null(dots$seed) || !is.null(sampler_params$seed)) "user" else "auto"
+  if (seed_source == "auto")
+    sampler_params$seed <- as.integer((as.numeric(Sys.time()) * 1000 + Sys.getpid()) %% .Machine$integer.max)
   x$fitted_model <- do.call(
     x$compiled_model$sample,
     c(list(data = stan_data), sampler_params, dots)
@@ -421,12 +433,30 @@ fit.stanmodel <- function(x,
     stop(sprintf("Expected %d chains but got %d; refusing to continue with a partial set of draws.",
                  as.integer(n_req), posterior::nchains(x$draws)), call. = FALSE)
   x$sampler_diagnostics <- x$fitted_model$sampler_diagnostics()
+  x$provenance <- .provenance(x, seed_source)
   .drop_cached_draws(x$fitted_model)
 
   x$variables <- .get_variables(x$draws)
   validate_stanmodel(x)
 }
 
+
+# what is needed to reproduce a fit: the seed CmdStan actually used, versions, code hash
+.provenance <- function(x, seed_source) {
+  md <- tryCatch(x$fitted_model$metadata(), error = function(e) list())
+  ver <- function(p) tryCatch(as.character(utils::packageVersion(p)), error = function(e) NA_character_)
+  list(seed          = md$seed %||% x$sampler_params$seed,
+       seed_source   = seed_source,
+       chains        = posterior::nchains(x$draws),
+       iter_warmup   = md$iter_warmup %||% x$sampler_params$iter_warmup,
+       iter_sampling = md$iter_sampling %||% x$sampler_params$iter_sampling,
+       cmdstan       = tryCatch(as.character(cmdstanr::cmdstan_version()), error = function(e) NA_character_),
+       cmdstanr      = ver("cmdstanr"),
+       stanworkflow  = ver("stanworkflow"),
+       R             = paste(R.version$major, R.version$minor, sep = "."),
+       time          = Sys.time(),
+       code_hash     = if (!is.null(x$model_code)) rlang::hash(x$model_code) else NA_character_)
+}
 
 # x$draws is the single persistent copy of the draws: drop cmdstanr's internal
 # copy (same size) so it is neither kept in memory nor saved twice. In the same
@@ -1095,6 +1125,10 @@ print.stanmodel <- function(x, ...) {
   cat("<stanmodel>\n")
   cat("  compiled  :", !is.null(x$compiled_model), "\n")
   cat("  fitted    :", !is.null(x$fitted_model), "\n")
+  if (!is.null(pv <- x$provenance))
+    cat(sprintf("  provenance: seed %s (%s), %s chains x %s draws, CmdStan %s, stanworkflow %s, %s\n",
+                pv$seed, pv$seed_source, pv$chains, pv$iter_sampling, pv$cmdstan,
+                pv$stanworkflow, format(pv$time, "%Y-%m-%d %H:%M")))
   cat("  code lines:", if (!is.null(x$model_code)) length(strsplit(x$model_code, "\n")[[1]]) else 0L, "\n")
   cat("  priors    :\n")
   if (!is.null(x$priors)) print(x$priors) else cat("    <none>\n")

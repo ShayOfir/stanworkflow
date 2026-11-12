@@ -253,3 +253,32 @@ test_that("inference on a fit that failed diagnostics repeats the warning (does 
                  "12 divergent", class = "stanworkflow_convergence_warning")
   expect_s3_class(wf$inference$main, "inference")
 })
+
+test_that("diagnostics_params: forgiving file formats, argument override, unknown names warned", {
+  f <- tempfile(fileext = ".csv")
+  rd <- function(lines) { writeLines(lines, f); stanworkflow:::.read_name_list(f) }
+  expect_equal(rd(c('"parameters"', '"a"', '"sigma"')), c("a", "sigma"))   # old format
+  expect_equal(rd(c("Parameter", "a", "sigma")), c("a", "sigma"))           # any header word
+  expect_equal(rd(c("a", "sigma")), c("a", "sigma"))                        # no header
+  expect_equal(rd("a, sigma; b"), c("a", "sigma", "b"))                     # one line
+  expect_equal(rd(c("# check these", "a  # intercepts", "", "b[2]")), c("a", "b[2]"))
+
+  skip_if_no_cmdstan()
+  root <- tempfile("models"); dir.create(file.path(root, "tm"), recursive = TRUE)
+  file.copy(file.path(tm_models, "tm", c("model_code.stan", "priors.csv")), file.path(root, "tm"))
+  writeLines(c("variables", "a", "b[2]", "sigam"), file.path(root, "tm", "diagnostics_params.txt"))
+  expect_warning(wf <- wflow("tm", models_folder = root), "not defined by the model.*sigam")
+  expect_equal(wf$diagnostics_params, c("a", "b[2]"))
+  wf <- wflow("tm", models_folder = root, diagnostics_params = c("sigma", "g"))   # argument wins
+  expect_equal(wf$diagnostics_params, c("sigma", "g"))
+})
+
+test_that("wflow() prior check defaults to 500 + 500 draws; overrides still apply", {
+  skip_if_no_cmdstan()
+  wf <- wflow("tm", models_folder = tm_models)
+  expect_equal(wf$prior_sampler_params$iter_sampling, 500L)
+  expect_equal(wf$prior_sampler_params$iter_warmup, 500L)
+  expect_equal(wf$post_sampler_params$iter_sampling, 1000L)
+  expect_equal(wflow("tm", models_folder = tm_models,
+                     prior_sampler_params_list = list(iter_sampling = 50L))$prior_sampler_params$iter_sampling, 50L)
+})
